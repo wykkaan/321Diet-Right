@@ -23,7 +23,7 @@ const SignUpPage = () => {
 
         try {
             await signUp(email, password, username);
-            router.push('/login');
+            router.push('/onboarding/begin');
         } catch (error) {
             setError(error.message);
         }
