@@ -1,5 +1,3 @@
-// File: src/app/onboarding/loading/page.js
-
 'use client'
 
 import { useEffect, useState } from 'react'
@@ -7,7 +5,7 @@ import { useRouter } from 'next/navigation'
 
 export default function LoadingScreen() {
   const router = useRouter()
-  const [error, setError] = useState(null)
+  const [status, setStatus] = useState('loading') // 'loading', 'success', or 'error'
 
   useEffect(() => {
     const submitUserData = async () => {
@@ -17,7 +15,7 @@ export default function LoadingScreen() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             username: localStorage.getItem('userName'),
-            email: localStorage.getItem('userEmail'), // Assuming you collected this during sign up
+            email: localStorage.getItem('userEmail'),
             goal: localStorage.getItem('userGoal'),
             gender: localStorage.getItem('userGender'),
             age: parseInt(localStorage.getItem('userAge')),
@@ -37,11 +35,16 @@ export default function LoadingScreen() {
         // Clear localStorage after successful submission
         localStorage.clear()
 
-        // Redirect to the dashboard
-        router.push('/dashboard')
+        // Set status to success
+        setStatus('success')
+
+        // Redirect to the dashboard after a short delay
+        setTimeout(() => {
+          router.push('/dashboard')
+        }, 1500) // 1.5 second delay
       } catch (error) {
         console.error('Error submitting user data:', error)
-        setError('An error occurred while setting up your account. Please try again.')
+        setStatus('error')
       }
     }
 
@@ -51,14 +54,23 @@ export default function LoadingScreen() {
   return (
     <div className="min-h-screen bg-beige text-olive flex flex-col items-center justify-center p-4">
       <h1 className="text-2xl font-bold mb-8 text-olive-dark">Setting the building blocks for your journey</h1>
-      {!error ? (
+      {status === 'loading' && (
         <>
           <div className="w-16 h-16 border-t-4 border-teal border-solid rounded-full animate-spin"></div>
           <p className="mt-4 text-olive">Please wait while we personalize your experience...</p>
         </>
-      ) : (
+      )}
+      {status === 'success' && (
         <div className="text-center">
-          <p className="text-coral mb-4">{error}</p>
+          <p className="text-teal mb-4">Success! Redirecting to your dashboard...</p>
+          <div className="w-16 h-16 border-4 border-teal border-solid rounded-full flex items-center justify-center">
+            <span className="text-2xl">✓</span>
+          </div>
+        </div>
+      )}
+      {status === 'error' && (
+        <div className="text-center">
+          <p className="text-coral mb-4">An error occurred while setting up your account. Please try again.</p>
           <button 
             onClick={() => router.push('/onboarding/begin')}
             className="bg-olive text-beige px-6 py-2 rounded-full hover:bg-olive-dark transition-colors"
