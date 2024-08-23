@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { supabase } from '@/lib/auth'
 
 export default function LoadingScreen() {
   const router = useRouter()
@@ -10,12 +11,23 @@ export default function LoadingScreen() {
   useEffect(() => {
     const submitUserData = async () => {
       try {
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+        if (sessionError) throw sessionError;
+
+        if (!session) {
+          setStatus('error');
+          return;
+        }
+
         const response = await fetch('/api/submit-user-data', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`
+          },
           body: JSON.stringify({
             username: localStorage.getItem('userName'),
-            email: localStorage.getItem('userEmail'),
             goal: localStorage.getItem('userGoal'),
             gender: localStorage.getItem('userGender'),
             age: parseInt(localStorage.getItem('userAge')),

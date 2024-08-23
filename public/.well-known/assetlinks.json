@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "cafe.bloomify.dietright.twa",
+        "sha256_cert_fingerprints": ["17:D3:54:A9:52:AB:1C:0B:94:98:7C:F2:0F:42:90:C6:BE:89:30:39:9B:73:EC:CE:19:DE:23:76:4C:45:26:69"]
+      }
+    }]

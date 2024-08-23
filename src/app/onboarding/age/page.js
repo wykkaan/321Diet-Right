@@ -26,7 +26,7 @@ export default function AgeInput() {
           value={age}
           onChange={(e) => setAge(e.target.value)}
           className="w-full p-2 mb-4 border border-olive rounded bg-white text-olive"
-          placeholder="Your name"
+          placeholder="Your age"
           required
         />
         <button 

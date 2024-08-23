@@ -1,22 +1,18 @@
-
 import { createClient } from '@supabase/supabase-js'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 export async function signUp(email, password, username) {
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
-      data: {
-        username,
-      }
+      data: { username }
     }
   })
-
   if (error) throw error
   return data
 }
@@ -26,7 +22,6 @@ export async function signIn(email, password) {
     email,
     password,
   })
-
   if (error) throw error
   return data
 }
@@ -72,7 +67,7 @@ export function onAuthStateChange(callback) {
 
 export async function getUserById(id) {
   const { data, error } = await supabase
-    .from('profiles')
+    .from('users')
     .select('*')
     .eq('id', id)
     .single()
@@ -83,7 +78,7 @@ export async function getUserById(id) {
 
 export async function updateUserInDatabase(id, updates) {
   const { data, error } = await supabase
-    .from('profiles')
+    .from('users')
     .update(updates)
     .eq('id', id)
 
@@ -91,4 +86,17 @@ export async function updateUserInDatabase(id, updates) {
   return data
 }
 
-export { supabase }
+export async function checkUserCompletion(userId) {
+  const { data: profile, error } = await supabase
+    .from('users')
+    .select('*')
+    .eq('id', userId)
+    .single()
+
+  if (error) throw error
+
+  const requiredFields = ['username', 'goal', 'gender', 'age', 'height', 'weight', 'target_calories']
+  const missingFields = requiredFields.filter(field => !profile[field])
+
+  return missingFields.length === 0
+}

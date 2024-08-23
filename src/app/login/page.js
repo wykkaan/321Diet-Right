@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { signIn } from '@/lib/auth'
+import { signIn, supabase } from '@/lib/auth'
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
@@ -14,8 +14,29 @@ const LoginPage = () => {
     e.preventDefault();
     setError('');
     try {
-      await signIn(email, password);
-      router.push('/dashboard');
+      const { user } = await signIn(email, password);
+      
+      // Check if user needs to complete onboarding
+      const { data: profile, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (error || !profile) {
+        router.push('/onboarding/begin');
+        return;
+      }
+
+      // Check for missing fields
+      const requiredFields = ['username', 'goal', 'gender', 'age', 'height', 'weight', 'target_calories']
+      const missingFields = requiredFields.filter(field => !profile[field])
+
+      if (missingFields.length > 0) {
+        router.push('/onboarding/begin');
+      } else {
+        router.push('/dashboard');
+      }
     } catch (error) {
       setError(error.message);
     }

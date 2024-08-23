@@ -1,50 +1,44 @@
-import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-const supabase = createClient(supabaseUrl, supabaseAnonKey)
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 export async function POST(req) {
-  if (req.method !== 'POST') {
-    return NextResponse.json({ error: 'Method Not Allowed' }, { status: 405 })
-  }
-
   try {
-    const userData = await req.json()
+    const token = req.headers.get('Authorization')?.split('Bearer ')[1];
+    if (!token) {
+      return NextResponse.json({ error: 'No token provided' }, { status: 401 });
+    }
 
-    // First, get the user's ID from the auth.users table
-    const { data: authUser, error: authError } = await supabase
-      .from('auth.users')
-      .select('id')
-      .eq('email', userData.email)
-      .single()
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: `Bearer ${token}` } },
+    });
 
-    if (authError) throw authError
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
 
-    // Now insert the data into the public.users table
+    if (userError) throw userError;
+
+    if (!user) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    }
+
+    const userData = await req.json();
+
+    // Insert or update the data in the users table
     const { data, error } = await supabase
       .from('users')
-      .insert([
-        {
-          id: authUser.id,
-          username: userData.username,
-          email: userData.email,
-          goal: userData.goal,
-          gender: userData.gender,
-          age: userData.age,
-          height: userData.height,
-          weight: userData.weight,
-          target_calories: userData.target_calories
-        }
-      ])
+      .upsert({
+        id: user.id,
+        ...userData
+      })
+      .select();
 
-    if (error) throw error
+    if (error) throw error;
 
-    return NextResponse.json({ message: 'User data submitted successfully', data })
+    return NextResponse.json({ message: 'User data submitted successfully', data });
   } catch (error) {
-    console.error('Error submitting user data:', error)
-    return NextResponse.json({ error: 'An error occurred while submitting user data' }, { status: 500 })
+    console.error('Error submitting user data:', error);
+    return NextResponse.json({ error: 'Failed to submit user data' }, { status: 500 });
   }
 }
