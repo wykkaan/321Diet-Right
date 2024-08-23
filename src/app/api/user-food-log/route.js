@@ -20,18 +20,27 @@ export async function GET(request) {
 
     if (error) throw error;
 
-    // Fetch and return user data
-    const { data, error: profileError } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', user.id)
-      .single();
+    const { searchParams } = new URL(request.url);
+    const date = searchParams.get('date');
 
-    if (profileError) throw profileError;
+    const { data, error: logError } = await supabase
+      .from('user_food_entries')
+      .select(`
+        *,
+        food_menu (
+          title,
+          restaurant_chain
+        )
+      `)
+      .eq('user_id', user.id)
+      .eq('date', date)
+      .order('created_at', { ascending: true });
+
+    if (logError) throw logError;
 
     return NextResponse.json(data);
   } catch (error) {
-    console.error('Error fetching user data:', error);
-    return NextResponse.json({ error: 'Failed to fetch user data' }, { status: 403 });
+    console.error('Error fetching food log:', error);
+    return NextResponse.json({ error: 'Failed to fetch food log' }, { status: 403 });
   }
 }

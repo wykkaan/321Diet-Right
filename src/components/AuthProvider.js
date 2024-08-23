@@ -48,12 +48,18 @@ export function AuthProvider({ children }) {
     }
   }, [router])
 
+  const getToken = async () => {
+    const session = await getUserSession()
+    return session?.access_token
+  }
+
   const value = {
     user,
     setUser,
     loading,
     isProfileComplete,
-    setIsProfileComplete
+    setIsProfileComplete,
+    getToken
   }
 
   return (
