@@ -83,7 +83,11 @@ const AddFoodPage = ({ params }) => {
           body: JSON.stringify({
             food_menu_id: selectedFood.id,
             meal_type: mealType,
-            serving_size: servingSize
+            serving_size: servingSize,
+            calories: selectedFood.calories,
+            protein: selectedFood.protein,
+            fat: selectedFood.fat,
+            carbohydrates: selectedFood.carbohydrates,
           })
         });
   

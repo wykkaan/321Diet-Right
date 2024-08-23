@@ -23,10 +23,7 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
 
-    const { food_menu_id, meal_type, serving_size } = await req.json();
-
-    // Get the current date
-    const currentDate = new Date().toISOString().split('T')[0];
+    const { food_menu_id, meal_type, serving_size, calories, protein, fat, carbohydrates } = await req.json();
 
     // Insert the food entry
     const { data, error } = await supabase
@@ -36,7 +33,10 @@ export async function POST(req) {
         food_menu_id: food_menu_id,
         meal_type: meal_type,
         serving_size: serving_size,
-        date: currentDate
+        calories: calories,
+        protein: protein,
+        fat: fat,
+        carbohydrates: carbohydrates,
       })
       .select();
 
