@@ -80,20 +80,6 @@ const ProfilePage = () => {
         </button>
       </div>
       
-      {/* Bottom Navigation */}
-      <div className="flex border-t border-[#3C4E2A]">
-        <button 
-          onClick={() => router.push('/dashboard')}
-          className="flex-1 py-4 text-center font-semibold text-[#3C4E2A]"
-        >
-          Logbook
-        </button>
-        <button 
-          className="flex-1 py-4 text-center font-semibold text-[#008080] border-t-2 border-[#008080]"
-        >
-          Profile
-        </button>
-      </div>
     </div>
   );
 };
