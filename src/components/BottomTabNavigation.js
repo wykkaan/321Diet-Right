@@ -17,7 +17,7 @@ const BottomTabNavigation = () => {
 
   const handleSignOut = async () => {
     await signOut()
-    setUser(null)
+    localStorage.clear()
     router.push('/login')
   }
 
