@@ -4,7 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-export async function GET(request) {
+export async function POST(request) {
   const authHeader = request.headers.get('authorization');
   if (!authHeader) {
     return NextResponse.json({ error: 'Missing auth token' }, { status: 401 });
@@ -17,21 +17,19 @@ export async function GET(request) {
 
   try {
     const { data: { user }, error } = await supabase.auth.getUser();
-
     if (error) throw error;
 
-    // Fetch specific user data fields
-    const { data, error: profileError } = await supabase
+    const { username, email, goal, gender, age, height, weight, target_calories } = await request.json();
+    const { data, error: updateError } = await supabase
       .from('users')
-      .select('username, email, goal, gender, age, height, weight, target_calories')
-      .eq('id', user.id)
-      .single();
+      .update({ username, email, goal, gender, age, height, weight, target_calories })
+      .eq('id', user.id);
 
-    if (profileError) throw profileError;
+    if (updateError) throw updateError;
 
-    return NextResponse.json(data);
+    return NextResponse.json({ message: 'User updated successfully', data });
   } catch (error) {
-    console.error('Error fetching user data:', error);
-    return NextResponse.json({ error: 'Failed to fetch user data' }, { status: 403 });
+    console.error('Error updating user:', error);
+    return NextResponse.json({ error: 'Failed to update user' }, { status: 500 });
   }
 }

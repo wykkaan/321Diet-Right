@@ -9,6 +9,7 @@ const Dashboard = () => {
   const [foodLog, setFoodLog] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [currentWeight, setCurrentWeight] = useState(null);
   const router = useRouter();
   const { user, loading: authLoading, getToken } = useAuth();
 
@@ -31,6 +32,7 @@ const Dashboard = () => {
       if (!response.ok) throw new Error('Failed to fetch user data');
       const data = await response.json();
       setUserData(data);
+      setCurrentWeight(data.weight); // Set the current weight from user data
     } catch (err) {
       console.error('Error fetching user data:', err);
       setError(err.message);
@@ -71,6 +73,26 @@ const Dashboard = () => {
     }, { calories: 0, protein: 0, fat: 0, carbs: 0 });
   };
 
+  const updateWeight = async (newWeight) => {
+    try {
+      const token = await getToken();
+      const response = await fetch('/api/update-weight', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ weight: newWeight }),
+      });
+
+      if (!response.ok) throw new Error('Failed to update weight');
+      setCurrentWeight(newWeight);
+    } catch (err) {
+      console.error('Error updating weight:', err);
+      setError(err.message);
+    }
+  };
+
   if (authLoading || loading) return <div>Loading...</div>;
   if (error) return <div>Error: {error}</div>;
   if (!userData) return <div>No user data available</div>;
@@ -82,6 +104,7 @@ const Dashboard = () => {
     <div className="font-sans bg-[#F5E9D4] text-[#3C4E2A] min-h-screen flex flex-col p-4">
       <h1 className="text-2xl font-bold text-center mb-2">DIET RIGHT</h1>
       <p className="text-center mb-4">&lt; Today &gt;</p>
+
 
       {/* Calories */}
       <div className="bg-[#3C4E2A] text-[#F5E9D4] p-4 rounded-lg mb-4">
@@ -134,8 +157,13 @@ const Dashboard = () => {
           </button>
         </div>
       ))}
+      
+      {/* Weight Section */}
+      <WeightUpdate currentWeight={currentWeight} updateWeight={updateWeight} />
+
     </div>
   );
+  
 };
 
 const MacroCircle = ({ label, value, color }) => (
@@ -146,5 +174,46 @@ const MacroCircle = ({ label, value, color }) => (
     <p className="mt-1 text-sm">{label}</p>
   </div>
 );
+
+const WeightUpdate = ({ currentWeight, updateWeight }) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [newWeight, setNewWeight] = useState(currentWeight);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    updateWeight(newWeight);
+    setIsEditing(false);
+  };
+
+  return (
+    <div className="bg-[#F5E9D4] border border-[#3C4E2A] p-4 rounded-lg mb-4">
+      <h3 className="text-lg font-semibold mb-2">Current Weight</h3>
+      {isEditing ? (
+        <form onSubmit={handleSubmit} className="flex items-center">
+          <input
+            type="number"
+            value={newWeight}
+            onChange={(e) => setNewWeight(e.target.value)}
+            className="border rounded p-1 mr-2"
+            step="0.1"
+          />
+          <button type="submit" className="bg-[#008080] text-white px-2 py-1 rounded">
+            Save
+          </button>
+        </form>
+      ) : (
+        <div className="flex justify-between items-center">
+          <span>{currentWeight} kg</span>
+          <button
+            onClick={() => setIsEditing(true)}
+            className="text-[#008080]"
+          >
+            Update
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
 
 export default Dashboard;

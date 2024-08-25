@@ -42,13 +42,13 @@ const BottomTabNavigation = () => {
         <span className="text-xs">Logbook</span>
       </button>
       <button
-        onClick={() => handleTabClick('profile')}
-        className={`flex flex-col items-center ${activeTab === 'profile' ? 'text-[#F5E9D4]' : 'text-[#A0A0A0]'}`}
+        onClick={() => handleTabClick('more')}
+        className={`flex flex-col items-center ${activeTab === 'more' ? 'text-[#F5E9D4]' : 'text-[#A0A0A0]'}`}
       >
         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
         </svg>
-        <span className="text-xs">Profile</span>
+        <span className="text-xs">More</span>
       </button>
       <button onClick={handleSignOut} className="flex flex-col items-center text-[#A0A0A0]">
         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
