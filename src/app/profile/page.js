@@ -55,24 +55,28 @@ const ProfilePage = () => {
         <h1 className="text-2xl font-bold mb-4">Hello, {userData.username}!</h1>
         
         <div className="bg-[#FF7F50] text-white p-4 rounded-lg mb-4">
-          <h2 className="text-lg">I want to</h2>
+          <h2 className="text-lg">Current Goal</h2>
           <p className="text-2xl font-bold">{userData.goal.toUpperCase()}</p>
         </div>
         
-        <button className="w-full bg-[#F5E9D4] border border-[#3C4E2A] text-[#3C4E2A] py-3 rounded-lg font-semibold mb-4">
-          DIET PROGRESS
+        <button onClick={() => router.push('/progress')} className="w-full bg-[#F5E9D4] border border-[#3C4E2A] text-[#3C4E2A] py-3 rounded-lg font-semibold mb-4">
+          Progress
         </button>
         
-        <button className="w-full bg-[#F5E9D4] border border-[#3C4E2A] text-[#3C4E2A] py-3 rounded-lg font-semibold mb-4">
-          WEIGHT PROGRESS
+        <button onClick={() => router.push('/goals')} className="w-full bg-[#F5E9D4] border border-[#3C4E2A] text-[#3C4E2A] py-3 rounded-lg font-semibold mb-4">
+          Goals
         </button>
         
-        <button className="w-full bg-[#F5E9D4] border border-[#3C4E2A] text-[#3C4E2A] py-3 rounded-lg font-semibold mb-4">
-          MY RECIPES
+        <button onClick={() => router.push('/my-recipes')} className="w-full bg-[#F5E9D4] border border-[#3C4E2A] text-[#3C4E2A] py-3 rounded-lg font-semibold mb-4">
+          My Recipes
         </button>
         
-        <button className="w-full bg-[#F5E9D4] border border-[#3C4E2A] text-[#3C4E2A] py-3 rounded-lg font-semibold mb-4">
-          MY DETAILS
+        <button onClick={() => router.push('/search-recipes')} className="w-full bg-[#F5E9D4] border border-[#3C4E2A] text-[#3C4E2A] py-3 rounded-lg font-semibold mb-4">
+          Search Recipes
+        </button>
+        
+        <button onClick={() => router.push('/my-profile')} className="w-full bg-[#F5E9D4] border border-[#3C4E2A] text-[#3C4E2A] py-3 rounded-lg font-semibold mb-4">
+          My Profile
         </button>
       </div>
       
