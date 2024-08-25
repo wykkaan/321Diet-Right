@@ -79,7 +79,6 @@ const ProfilePage = () => {
           My Profile
         </button>
       </div>
-      
     </div>
   );
 };

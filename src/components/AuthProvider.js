@@ -1,50 +1,65 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useState, useMemo, useCallback } from 'react'
 import { getUserSession, checkUserCompletion, supabase } from '@/lib/auth'
 import { useRouter } from 'next/navigation'
 
 const AuthContext = createContext()
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [isProfileComplete, setIsProfileComplete] = useState(true)
-  const [token, setToken] = useState(null)
+  const [authState, setAuthState] = useState({
+    user: null,
+    token: null,
+    isProfileComplete: true,
+    loading: true
+  })
   const router = useRouter()
 
-  useEffect(() => {
-    async function loadUserFromSession() {
-      const session = await getUserSession()
-      if (session) {
-        setUser(session.user)
-        setToken(session.access_token)
-        const isComplete = await checkUserCompletion(session.user.id)
-        setIsProfileComplete(isComplete)
-        if (!isComplete && !window.location.pathname.startsWith('/onboarding')) {
-          router.push('/onboarding/begin')
-        }
-      } else {
-        setUser(null)
-        setToken(null)
+  const loadUserFromSession = useCallback(async () => {
+    const session = await getUserSession()
+    if (session) {
+      const isComplete = await checkUserCompletion(session.user.id)
+      setAuthState({
+        user: session.user,
+        token: session.access_token,
+        isProfileComplete: isComplete,
+        loading: false
+      })
+      if (!isComplete && !window.location.pathname.startsWith('/onboarding')) {
+        router.push('/onboarding/begin')
       }
-      setLoading(false)
+    } else {
+      setAuthState({
+        user: null,
+        token: null,
+        isProfileComplete: true,
+        loading: false
+      })
     }
+  }, [router])
+
+  useEffect(() => {
     loadUserFromSession()
 
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        setUser(session.user)
-        setToken(session.access_token)
         const isComplete = await checkUserCompletion(session.user.id)
-        setIsProfileComplete(isComplete)
+        setAuthState({
+          user: session.user,
+          token: session.access_token,
+          isProfileComplete: isComplete,
+          loading: false
+        })
         if (!isComplete) {
           router.push('/onboarding/begin')
         }
       } else if (event === 'SIGNED_OUT') {
-        setUser(null)
-        setToken(null)
-        setIsProfileComplete(true)
+        setAuthState({
+          user: null,
+          token: null,
+          isProfileComplete: true,
+          loading: false
+        })
       }
     })
 
@@ -53,42 +68,50 @@ export function AuthProvider({ children }) {
         authListener.unsubscribe()
       }
     }
-  }, [router])
+  }, [router, loadUserFromSession])
 
-  const getToken = async () => {
-    if (token) return token
+  const getToken = useCallback(async () => {
+    if (authState.token) return authState.token
 
     const session = await getUserSession()
     if (session) {
-      setToken(session.access_token)
+      setAuthState(prev => ({ ...prev, token: session.access_token }))
       return session.access_token
     }
 
     return null
-  }
+  }, [authState.token])
 
-  const refreshToken = async () => {
+  const refreshToken = useCallback(async () => {
     const { data, error } = await supabase.auth.refreshSession()
     if (error) {
       console.error('Error refreshing token:', error)
       return null
     }
     if (data.session) {
-      setToken(data.session.access_token)
+      setAuthState(prev => ({ ...prev, token: data.session.access_token }))
       return data.session.access_token
     }
     return null
-  }
+  }, [])
 
-  const value = {
-    user,
+  const setUser = useCallback((user) => {
+    setAuthState(prev => ({ ...prev, user }))
+  }, [])
+
+  const setIsProfileComplete = useCallback((isComplete) => {
+    setAuthState(prev => ({ ...prev, isProfileComplete: isComplete }))
+  }, [])
+
+  const value = useMemo(() => ({
+    user: authState.user,
     setUser,
-    loading,
-    isProfileComplete,
+    loading: authState.loading,
+    isProfileComplete: authState.isProfileComplete,
     setIsProfileComplete,
     getToken,
     refreshToken
-  }
+  }), [authState, setUser, setIsProfileComplete, getToken, refreshToken])
 
   return (
     <AuthContext.Provider value={value}>
