@@ -11,18 +11,36 @@ export function AuthProvider({ children }) {
     user: null,
     token: null,
     isProfileComplete: true,
+    isAdmin: false,
     loading: true
   })
   const router = useRouter()
+
+  const checkAdminStatus = useCallback(async (userId) => {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('is_admin')
+        .eq('id', userId)
+        .single();
+      if (error) throw error;
+      return data.isAdmin;
+    } catch (error) {
+      console.error('Error checking admin status:', error)
+      return false
+    }
+  }, [])
 
   const loadUserFromSession = useCallback(async () => {
     const session = await getUserSession()
     if (session) {
       const isComplete = await checkUserCompletion(session.user.id)
+      const isAdmin = await checkAdminStatus(session.user.id)
       setAuthState({
         user: session.user,
         token: session.access_token,
         isProfileComplete: isComplete,
+        isAdmin: isAdmin,
         loading: false
       })
       if (!isComplete && !window.location.pathname.startsWith('/onboarding')) {
@@ -33,10 +51,11 @@ export function AuthProvider({ children }) {
         user: null,
         token: null,
         isProfileComplete: true,
+        isAdmin: false,
         loading: false
       })
     }
-  }, [router])
+  }, [router, checkAdminStatus])
 
   useEffect(() => {
     loadUserFromSession()
@@ -44,10 +63,12 @@ export function AuthProvider({ children }) {
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
         const isComplete = await checkUserCompletion(session.user.id)
+        const isAdmin = await checkAdminStatus(session.user.id)
         setAuthState({
           user: session.user,
           token: session.access_token,
           isProfileComplete: isComplete,
+          isAdmin: isAdmin,
           loading: false
         })
         if (!isComplete) {
@@ -58,17 +79,18 @@ export function AuthProvider({ children }) {
           user: null,
           token: null,
           isProfileComplete: true,
+          isAdmin: false,
           loading: false
         })
       }
     })
 
     return () => {
-      if (authListener && authListener.unsubscribe) {
+      if (authListener && typeof authListener.unsubscribe === 'function') {
         authListener.unsubscribe()
       }
     }
-  }, [router, loadUserFromSession])
+  }, [router, loadUserFromSession, checkAdminStatus])
 
   const getToken = useCallback(async () => {
     if (authState.token) return authState.token
@@ -108,6 +130,7 @@ export function AuthProvider({ children }) {
     setUser,
     loading: authState.loading,
     isProfileComplete: authState.isProfileComplete,
+    isAdmin: authState.isAdmin,
     setIsProfileComplete,
     getToken,
     refreshToken
