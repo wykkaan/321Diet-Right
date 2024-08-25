@@ -36,6 +36,7 @@ const SearchForRecipes = () => {
     fetchFavorites();
   }, []);
 
+
   const toggleFavorite = async (recipe) => {
     try {
       const token = await getToken();
@@ -50,7 +51,13 @@ const SearchForRecipes = () => {
         body: JSON.stringify({
           recipe_id: recipe.id,
           recipe_title: recipe.title,
-          recipe_image: recipe.image
+          recipe_image: recipe.image,
+          ready_in_minutes: recipe.readyInMinutes,
+          servings: recipe.servings,
+          calories: recipe.nutrition?.nutrients.find(n => n.name === "Calories")?.amount || 0,
+          protein: recipe.nutrition?.nutrients.find(n => n.name === "Protein")?.amount || 0,
+          fat: recipe.nutrition?.nutrients.find(n => n.name === "Fat")?.amount || 0,
+          carbs: recipe.nutrition?.nutrients.find(n => n.name === "Carbohydrates")?.amount || 0
         })
       });
       if (response.ok) {
@@ -157,32 +164,30 @@ const SearchForRecipes = () => {
   const renderRecipeList = (recipes) => (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {recipes.map(recipe => (
-        <div key={recipe.id} className="bg-white rounded-lg shadow-md overflow-hidden">
+        <div key={recipe.id || recipe.recipe_id} className="bg-white rounded-lg shadow-md overflow-hidden">
           <img 
-            src={recipe.image} 
-            alt={recipe.title} 
+            src={recipe.image || recipe.recipe_image} 
+            alt={recipe.title || recipe.recipe_title} 
             className="w-full h-48 object-cover"
           />
           <div className="p-4">
-            <h3 className="text-lg font-semibold mb-2 truncate">{recipe.title}</h3>
+            <h3 className="text-lg font-semibold mb-2 truncate">{recipe.title || recipe.recipe_title}</h3>
             <div className="text-sm text-gray-600 mb-2">
-              <p>Ready in: {recipe.readyInMinutes} minutes</p>
+              <p>Ready in: {recipe.readyInMinutes || recipe.ready_in_minutes} minutes</p>
               <p>Servings: {recipe.servings}</p>
             </div>
-            {recipe.nutrition && (
-              <div className="text-sm">
-                <p className="font-semibold">Nutrition (per serving):</p>
-                <p>Calories: {Math.round(recipe.nutrition.nutrients.find(n => n.name === "Calories").amount)}</p>
-                <p>Protein: {Math.round(recipe.nutrition.nutrients.find(n => n.name === "Protein").amount)}g</p>
-                <p>Fat: {Math.round(recipe.nutrition.nutrients.find(n => n.name === "Fat").amount)}g</p>
-                <p>Carbs: {Math.round(recipe.nutrition.nutrients.find(n => n.name === "Carbohydrates").amount)}g</p>
-              </div>
-            )}
+            <div className="text-sm">
+              <p className="font-semibold">Nutrition (per serving):</p>
+              <p>Calories: {Math.round(recipe.calories || (recipe.nutrition?.nutrients.find(n => n.name === "Calories")?.amount || 0))}</p>
+              <p>Protein: {Math.round(recipe.protein || (recipe.nutrition?.nutrients.find(n => n.name === "Protein")?.amount || 0))}g</p>
+              <p>Fat: {Math.round(recipe.fat || (recipe.nutrition?.nutrients.find(n => n.name === "Fat")?.amount || 0))}g</p>
+              <p>Carbs: {Math.round(recipe.carbs || (recipe.nutrition?.nutrients.find(n => n.name === "Carbohydrates")?.amount || 0))}g</p>
+            </div>
             <button 
               onClick={() => toggleFavorite(recipe)} 
               className="mt-2 text-yellow-500 hover:text-yellow-600"
             >
-              {favorites.some(fav => fav.recipe_id === recipe.id) ? '★' : '☆'}
+              {favorites.some(fav => fav.recipe_id === (recipe.id || recipe.recipe_id)) ? '★' : '☆'}
             </button>
           </div>
         </div>

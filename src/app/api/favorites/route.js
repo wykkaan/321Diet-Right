@@ -48,7 +48,17 @@ export async function POST(request) {
     const { data: { user }, error } = await supabase.auth.getUser();
     if (error) throw error;
 
-    const { recipe_id, recipe_title, recipe_image } = await request.json();
+    const { 
+      recipe_id, 
+      recipe_title, 
+      recipe_image, 
+      ready_in_minutes, 
+      servings, 
+      calories, 
+      protein, 
+      fat, 
+      carbs 
+    } = await request.json();
 
     const { data, error: insertError } = await supabase
       .from('user_favorites')
@@ -56,7 +66,13 @@ export async function POST(request) {
         user_id: user.id,
         recipe_id,
         recipe_title,
-        recipe_image
+        recipe_image,
+        ready_in_minutes,
+        servings,
+        calories,
+        protein,
+        fat,
+        carbs
       })
       .select()
       .single();
