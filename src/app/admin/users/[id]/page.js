@@ -95,17 +95,17 @@ const EditUser = ({ params }) => {
           />
         </div>
         <div className="mb-4">
-          <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="is_super_admin">
+          <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="is_admin">
             Admin Status
           </label>
           <select
             className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-            id="is_super_admin"
-            value={user.is_super_admin}
-            onChange={(e) => setUser({...user, is_super_admin: e.target.value === 'true'})}
+            id="is_admin"
+            value={user.is_admin}
+            onChange={(e) => setUser({...user, is_admin: e.target.value === 'true'})}
           >
             <option value="false">Regular User</option>
-            <option value="true">Super Admin</option>
+            <option value="true">Admin</option>
           </select>
         </div>
         <div className="flex items-center justify-between">

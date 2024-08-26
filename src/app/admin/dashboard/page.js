@@ -1,4 +1,3 @@
-// src/app/admin/dashboard/page.js
 'use client'
 
 import { useState, useEffect } from 'react';
@@ -88,7 +87,7 @@ const AdminDashboard = () => {
               <td className="p-3">{user.id}</td>
               <td className="p-3">{user.username}</td>
               <td className="p-3">{user.email}</td>
-              <td className="p-3">{user.is_super_admin ? 'Yes' : 'No'}</td>
+              <td className="p-3">{user.is_admin ? 'Yes' : 'No'}</td>
               <td className="p-3">
                 <button
                   onClick={() => handleEditUser(user.id)}

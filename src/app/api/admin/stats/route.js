@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { serverCheckAdminStatus } from '@/utils/serverCheckAdmin';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -11,27 +12,17 @@ export async function GET(request) {
   }
 
   const token = authHeader.split(' ')[1];
+  const isAdmin = await serverCheckAdminStatus(token);
+
+  if (!isAdmin) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+  }
+
   const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     global: { headers: { Authorization: `Bearer ${token}` } }
   });
 
   try {
-    const { data: { user }, error } = await supabase.auth.getUser();
-
-    if (error) throw error;
-
-    // Check if user is admin
-    const { data: adminData, error: adminError } = await supabase
-      .from('auth.users')
-      .select('is_super_admin')
-      .eq('id', user.id)
-      .single();
-
-    if (adminError) throw adminError;
-    if (!adminData.is_super_admin) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
-    }
-
     // Fetch stats
     const { data: totalUsers, error: userError } = await supabase
       .from('users')

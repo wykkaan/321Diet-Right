@@ -24,7 +24,7 @@ export function AuthProvider({ children }) {
         .eq('id', userId)
         .single();
       if (error) throw error;
-      return data.isAdmin;
+      return data.is_admin; // Changed from data.isAdmin to data.is_admin
     } catch (error) {
       console.error('Error checking admin status:', error)
       return false
@@ -45,6 +45,10 @@ export function AuthProvider({ children }) {
       })
       if (!isComplete && !window.location.pathname.startsWith('/onboarding')) {
         router.push('/onboarding/begin')
+      } else if (isAdmin && !window.location.pathname.startsWith('/admin')) {
+        router.push('/admin/dashboard')
+      } else if (!isAdmin && window.location.pathname.startsWith('/admin')) {
+        router.push('/dashboard')
       }
     } else {
       setAuthState({
@@ -54,6 +58,9 @@ export function AuthProvider({ children }) {
         isAdmin: false,
         loading: false
       })
+      if (!window.location.pathname.startsWith('/login')) {
+        router.push('/login')
+      }
     }
   }, [router, checkAdminStatus])
 
@@ -73,6 +80,10 @@ export function AuthProvider({ children }) {
         })
         if (!isComplete) {
           router.push('/onboarding/begin')
+        } else if (isAdmin) {
+          router.push('/admin/dashboard')
+        } else {
+          router.push('/dashboard')
         }
       } else if (event === 'SIGNED_OUT') {
         setAuthState({
@@ -82,6 +93,7 @@ export function AuthProvider({ children }) {
           isAdmin: false,
           loading: false
         })
+        router.push('/login')
       }
     })
 
@@ -125,6 +137,33 @@ export function AuthProvider({ children }) {
     setAuthState(prev => ({ ...prev, isProfileComplete: isComplete }))
   }, [])
 
+  const signIn = useCallback(async (email, password) => {
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+      if (error) throw error
+
+      const isAdmin = await checkAdminStatus(data.user.id)
+      setAuthState(prev => ({ 
+        ...prev, 
+        user: data.user, 
+        token: data.session.access_token, 
+        isAdmin, 
+        loading: false 
+      }))
+
+      if (isAdmin) {
+        router.push('/admin/dashboard')
+      } else {
+        router.push('/dashboard')
+      }
+
+      return { user: data.user, isAdmin }
+    } catch (error) {
+      console.error('Sign in error:', error)
+      return { error }
+    }
+  }, [checkAdminStatus, router])
+
   const value = useMemo(() => ({
     user: authState.user,
     setUser,
@@ -133,8 +172,9 @@ export function AuthProvider({ children }) {
     isAdmin: authState.isAdmin,
     setIsProfileComplete,
     getToken,
-    refreshToken
-  }), [authState, setUser, setIsProfileComplete, getToken, refreshToken])
+    refreshToken,
+    signIn
+  }), [authState, setUser, setIsProfileComplete, getToken, refreshToken, signIn])
 
   return (
     <AuthContext.Provider value={value}>

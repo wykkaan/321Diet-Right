@@ -1,55 +1,28 @@
-// src/app/admin/login/page.js
 'use client'
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { signIn } from '@/lib/auth';
+import { useState } from 'react';
 import { useAuth } from '@/components/AuthProvider';
 
 const AdminLoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const router = useRouter();
-  const { user, isAdmin, loading } = useAuth();
-
-  useEffect(() => {
-    if (!loading && user && isAdmin) {
-      router.push('/admin/dashboard');
-    }
-  }, [user, isAdmin, loading, router]);
+  const { signIn, loading } = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     try {
-      const { user, error } = await signIn(email, password);
+      const { error } = await signIn(email, password);
       if (error) throw error;
-      
-      // Check if the user is an admin
-      const response = await fetch('/api/check-admin', {
-        headers: {
-          'Authorization': `Bearer ${user.access_token}`
-        }
-      });
-      const { isAdmin } = await response.json();
-      
-      if (isAdmin) {
-        router.push('/admin/dashboard');
-      } else {
-        setError('You do not have admin privileges.');
-      }
     } catch (error) {
-      setError(error.message);
+      console.error('Login error:', error);
+      setError(error.message || 'An error occurred during login.');
     }
   };
 
   if (loading) {
     return <div>Loading...</div>;
-  }
-
-  if (user && isAdmin) {
-    return null; // This will be briefly shown before the useEffect redirects
   }
 
   return (
