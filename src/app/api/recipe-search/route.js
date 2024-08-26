@@ -1,4 +1,4 @@
-// app/api/recipe-search/route.js
+// src\app\api\recipe-search\route.js
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 

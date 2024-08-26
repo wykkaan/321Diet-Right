@@ -1,3 +1,4 @@
+// components/AuthProvider.js
 'use client'
 
 import { createContext, useContext, useEffect, useState, useMemo, useCallback } from 'react'

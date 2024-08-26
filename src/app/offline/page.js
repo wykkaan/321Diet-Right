@@ -1,3 +1,4 @@
+// src\app\offline\page.js
 "use client"
 export default function Offline() {
         return (

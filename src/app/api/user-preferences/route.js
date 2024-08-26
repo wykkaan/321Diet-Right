@@ -1,3 +1,4 @@
+// src\app\api\user-preferences\route.js
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 

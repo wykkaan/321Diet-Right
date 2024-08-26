@@ -1,3 +1,4 @@
+// src\app\onboarding\age\page.js
 'use client'
 
 import { useState } from 'react'

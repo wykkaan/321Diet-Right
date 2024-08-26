@@ -1,3 +1,4 @@
+// src\app\onboarding\begin\page.js
 'use client'
 
 import { useRouter } from 'next/navigation'

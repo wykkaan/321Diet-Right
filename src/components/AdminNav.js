@@ -1,3 +1,4 @@
+// components/AdminNav.js
 'use client'
 
 import Link from 'next/link';

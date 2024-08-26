@@ -1,3 +1,4 @@
+// src\app\api\food-search\route.js
 import { NextResponse } from 'next/server';
 
 const API_KEY = process.env.SPOONACULAR_API_KEY;

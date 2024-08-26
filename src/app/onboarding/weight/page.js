@@ -1,3 +1,4 @@
+// src\app\onboarding\weight\page.js
 'use client'
 
 import { useState } from 'react'

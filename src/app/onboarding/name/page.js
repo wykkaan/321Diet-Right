@@ -1,3 +1,4 @@
+// src\app\onboarding\name\page.js
 'use client'
 
 import { useState } from 'react'

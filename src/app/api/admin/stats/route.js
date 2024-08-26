@@ -1,3 +1,4 @@
+// src\app\api\admin\stats\route.js
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { serverCheckAdminStatus } from '@/utils/serverCheckAdmin';

@@ -1,3 +1,4 @@
+// src\app\api\user-food-log\route.js
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 

@@ -1,3 +1,4 @@
+// src\app\search-recipes\page.js
 'use client'
 
 import React, { useState, useEffect } from 'react';
