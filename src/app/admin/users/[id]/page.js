@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/AuthProvider';
 
-const EditUser = ({ params }) => {
+export default function EditUser({ params }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -18,28 +18,28 @@ const EditUser = ({ params }) => {
       return;
     }
 
-    fetchUser();
-  }, [isAdmin, router, id]);
+    async function fetchUser() {
+      try {
+        const token = await getToken();
+        const response = await fetch(`/api/admin/users/${id}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
 
-  const fetchUser = async () => {
-    try {
-      const token = await getToken();
-      const response = await fetch(`/api/admin/users/${id}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+        if (!response.ok) throw new Error('Failed to fetch user');
 
-      if (!response.ok) throw new Error('Failed to fetch user');
-
-      const data = await response.json();
-      setUser(data);
-    } catch (error) {
-      setError(error.message);
-    } finally {
-      setLoading(false);
+        const data = await response.json();
+        setUser(data);
+      } catch (error) {
+        setError(error.message);
+      } finally {
+        setLoading(false);
+      }
     }
-  };
+
+    fetchUser();
+  }, [isAdmin, router, id, getToken]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -119,6 +119,4 @@ const EditUser = ({ params }) => {
       </form>
     </div>
   );
-};
-
-export default EditUser;
+}
