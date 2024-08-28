@@ -1,0 +1,177 @@
+// src/lib/meal-assistant-tools.js
+import { DynamicTool } from "@langchain/core/tools";
+
+export const FindRecipesByIngredientsTool = new DynamicTool({
+  name: "find-recipes-by-ingredients",
+  description: "Find recipes based on available ingredients. Input should be a comma-separated list of ingredients.",
+  func: async (input) => {
+    const apiKey = process.env.NEXT_PUBLIC_SPOONACULAR_API_KEY;
+    if (!apiKey) {
+      throw new Error("Spoonacular API key not set. You can set it as NEXT_PUBLIC_SPOONACULAR_API_KEY in your environment variables.");
+    }
+    const url = `https://api.spoonacular.com/recipes/findByIngredients?apiKey=${apiKey}&ingredients=${input}&number=5`;
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Got ${response.status} error from Spoonacular API: ${response.statusText}`);
+    }
+    const data = await response.json();
+    let formattedResults = "Here are some recipes based on your ingredients:\n\n";
+    data.forEach((recipe, index) => {
+      formattedResults += `${index + 1}. ${recipe.title}\n`;
+      formattedResults += `   Missing ingredients: ${recipe.missedIngredients.map(ing => ing.name).join(', ')}\n\n`;
+    });
+    return formattedResults;
+  }
+});
+
+export const ComplexRecipeSearchTool = new DynamicTool({
+  name: "complex-recipe-search",
+  description: "Search for recipes based on various parameters like cuisine, diet, etc. Input should be a JSON string with query, cuisine, diet, intolerances, and number.",
+  func: async (input) => {
+    const apiKey = process.env.NEXT_PUBLIC_SPOONACULAR_API_KEY;
+    if (!apiKey) {
+      throw new Error("Spoonacular API key not set. You can set it as NEXT_PUBLIC_SPOONACULAR_API_KEY in your environment variables.");
+    }
+    const { query, cuisine, diet, intolerances, number = 5 } = JSON.parse(input);
+    let url = `https://api.spoonacular.com/recipes/complexSearch?apiKey=${apiKey}&query=${query}&number=${number}`;
+    if (cuisine) url += `&cuisine=${cuisine}`;
+    if (diet) url += `&diet=${diet}`;
+    if (intolerances) url += `&intolerances=${intolerances}`;
+    
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Got ${response.status} error from Spoonacular API: ${response.statusText}`);
+    }
+    const data = await response.json();
+    let formattedResults = `Here are some ${cuisine || ''} recipes ${diet ? 'suitable for ' + diet + ' diet' : ''} ${intolerances ? 'without ' + intolerances : ''}:\n\n`;
+    const recipeData = {};
+    data.results.forEach((recipe, index) => {
+      formattedResults += `${index + 1}. ${recipe.title}\n`;
+      recipeData[index + 1] = { id: recipe.id, title: recipe.title };
+    });
+    formattedResults += "\nPlease choose a recipe by its number or name.";
+    return JSON.stringify({
+      text: formattedResults,
+      recipes: recipeData
+    });
+  }
+});
+
+export const GetRecipeInformationTool = new DynamicTool({
+  name: "get-recipe-information",
+  description: "Get detailed information about a specific recipe. Input should be a JSON string with recipeData (from complex-recipe-search) and userChoice (number or name of recipe).",
+  func: async (input) => {
+    const { recipeData, userChoice } = JSON.parse(input);
+    const apiKey = process.env.NEXT_PUBLIC_SPOONACULAR_API_KEY;
+    if (!apiKey) {
+      throw new Error("Spoonacular API key not set. You can set it as NEXT_PUBLIC_SPOONACULAR_API_KEY in your environment variables.");
+    }
+
+    let recipeId;
+    if (typeof userChoice === 'number') {
+      recipeId = recipeData[userChoice].id;
+    } else {
+      const recipe = Object.values(recipeData).find(r => r.title.toLowerCase() === userChoice.toLowerCase());
+      if (recipe) {
+        recipeId = recipe.id;
+      } else {
+        throw new Error("Recipe not found. Please choose a valid recipe number or name.");
+      }
+    }
+
+    const url = `https://api.spoonacular.com/recipes/${recipeId}/information?apiKey=${apiKey}`;
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Got ${response.status} error from Spoonacular API: ${response.statusText}`);
+    }
+    const data = await response.json();
+    let formattedResults = `Recipe Information for ${data.title}:\n\n`;
+    formattedResults += `Calories: ${data.nutrition.nutrients.find(n => n.name === "Calories").amount} kcal\n`;
+    formattedResults += `Protein: ${data.nutrition.nutrients.find(n => n.name === "Protein").amount}g\n`;
+    formattedResults += `Fat: ${data.nutrition.nutrients.find(n => n.name === "Fat").amount}g\n`;
+    formattedResults += `Carbs: ${data.nutrition.nutrients.find(n => n.name === "Carbohydrates").amount}g\n`;
+    formattedResults += `Preparation Time: ${data.readyInMinutes} minutes\n`;
+    formattedResults += `Servings: ${data.servings}\n`;
+    return formattedResults;
+  }
+});
+
+export const GetRecipeInstructionsTool = new DynamicTool({
+  name: "get-recipe-instructions",
+  description: "Get step-by-step instructions for a specific recipe. Input should be a JSON string with recipeData (from complex-recipe-search) and userChoice (number or name of recipe).",
+  func: async (input) => {
+    const { recipeData, userChoice } = JSON.parse(input);
+    const apiKey = process.env.NEXT_PUBLIC_SPOONACULAR_API_KEY;
+    if (!apiKey) {
+      throw new Error("Spoonacular API key not set. You can set it as NEXT_PUBLIC_SPOONACULAR_API_KEY in your environment variables.");
+    }
+
+    let recipeId;
+    if (typeof userChoice === 'number') {
+      recipeId = recipeData[userChoice].id;
+    } else {
+      const recipe = Object.values(recipeData).find(r => r.title.toLowerCase() === userChoice.toLowerCase());
+      if (recipe) {
+        recipeId = recipe.id;
+      } else {
+        throw new Error("Recipe not found. Please choose a valid recipe number or name.");
+      }
+    }
+
+    const url = `https://api.spoonacular.com/recipes/${recipeId}/analyzedInstructions?apiKey=${apiKey}`;
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Got ${response.status} error from Spoonacular API: ${response.statusText}`);
+    }
+    const data = await response.json();
+    let formattedResults = `Recipe Instructions for ${recipeData[userChoice].title}:\n\n`;
+    if (data[0] && data[0].steps) {
+      data[0].steps.forEach((step, index) => {
+        formattedResults += `${index + 1}. ${step.step}\n`;
+      });
+    } else {
+      formattedResults += "No instructions available for this recipe.";
+    }
+    return formattedResults;
+  }
+});
+
+export const GoogleSearchTool = new DynamicTool({
+  name: "google-search",
+  description: "Search for restaurants in Singapore, including menu and calorie information when available. Input should be a restaurant name or cuisine type.",
+  func: async (input) => {
+    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_SEARCH_API_KEY;
+    const googleCSEId = process.env.NEXT_PUBLIC_GOOGLE_SEARCH_ENGINE_ID;
+    if (!apiKey || !googleCSEId) {
+      throw new Error("Google API key or CSE ID not set. Please check your environment variables.");
+    }
+    const url = `https://www.googleapis.com/customsearch/v1?key=${apiKey}&cx=${googleCSEId}&q=${encodeURIComponent(input + ' restaurant Singapore menu calories')}&num=5`;
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Error from Google custom search: ${response.statusText}`);
+    }
+    const json = await response.json();
+    
+    let formattedResults = `Information about "${input}" restaurants in Singapore:\n\n`;
+    
+    json.items.forEach((item, index) => {
+      const title = item.title.replace(/[|] Website.*$/, '').trim();  // Remove website suffix if present
+      const snippet = item.snippet.split('. ')[0];  // Take only the first sentence of the snippet
+      
+      formattedResults += `${index + 1}. ${title}\n`;
+      formattedResults += `   ${snippet}\n`;
+      
+      // Look for calorie information in the snippet
+      const calorieMatch = item.snippet.match(/(\d+)\s*calories?/i);
+      if (calorieMatch) {
+        formattedResults += `   Calorie info found: Approximately ${calorieMatch[1]} calories\n`;
+      }
+      
+      formattedResults += '\n';
+    });
+    
+    formattedResults += "Note: Calorie information may not be available for all restaurants. Please check with the restaurant for the most accurate and up-to-date nutritional information.";
+    
+    return formattedResults;
+  }
+});

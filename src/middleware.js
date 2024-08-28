@@ -14,7 +14,7 @@ export async function middleware(request) {
     }
   )
 
-  const { data: { session } } = await supabase.auth.getSession()
+  const { data: { session } } = await supabase.auth.getUser()
   console.log('Session in middleware:', session ? 'exists' : 'does not exist');
 
   // We're not doing any redirects here, just passing along the session information
