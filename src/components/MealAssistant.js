@@ -63,15 +63,16 @@ export default function MealAssistant() {
             First, ask the user if they want to cook or eat out today.
             
             If they want to cook:
-            1. Ask if they have specific ingredients they want to use or if they have a type of cuisine or diet in mind.
+            1. Ask if they have specific ingredients they want to use or if they have a type of cuisine or diet in mind or a meal in mind.
             2. If they have ingredients:
                a. Use FindRecipesByIngredients to get initial recipe ideas.
                b. Then use ComplexRecipeSearch to refine based on cuisine or dietary preferences.
             3. If they have a cuisine or diet preference:
                a. Use ComplexRecipeSearch directly with their preferences.
-            4. For each potential recipe, use GetRecipeInformation to check if it fits their calorie needs.
-            5. If a recipe doesn't fit, ask if they want to try another or adjust portions.
-            6. Once they choose a recipe, use GetRecipeInstructions to provide cooking steps.
+            4. If they they have a meal in mind, use ComplexRecipeSearch with their query.
+            5. For each potential recipe, use GetRecipeInformation to check if it fits their calorie needs.
+            6. If a recipe doesn't fit, ask if they want to try another or adjust portions.
+            7. Once they choose a recipe, use GetRecipeInstructions to provide cooking steps.
             
             If they want to eat out:
             1. Ask for their preferred cuisine or type of restaurant.
