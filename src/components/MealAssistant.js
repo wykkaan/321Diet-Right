@@ -19,6 +19,7 @@ export default function MealAssistant() {
   const [caloriesLeft, setCaloriesLeft] = useState('');
   const [loading, setLoading] = useState(false);
   const [isChatStarted, setIsChatStarted] = useState(false);
+  const [dietaryPreference, setDietaryPreference] = useState('');
 
   const handleCaloriesSubmit = (e) => {
     e.preventDefault();
@@ -58,31 +59,37 @@ export default function MealAssistant() {
         GoogleSearchTool
       ];
 
+      const systemPrompt = `
+        You are a helpful meal planning assistant. The user has ${caloriesLeft} calories left for the day and their dietary preference is ${dietaryPreference}. 
+        Always consider their dietary preference in your recommendations.
+
+        Follow these steps:
+        1. Ask if they want to cook or eat out today.
+
+        If they want to cook:
+        2. Ask if they have specific ingredients, a cuisine preference, or a meal in mind or they are halal or not.
+        3. Use the appropriate tool based on their response:
+           - FindRecipesByIngredients for specific ingredients
+           - ${dietaryPreference === 'halal' ? 'HalalRecipeSearch' : 'ComplexRecipeSearch'} for cuisine preferences or specific meals
+        4. Use GetRecipeInformation to check if recipes fit their calorie needs.
+        5. If a recipe doesn't fit, suggest adjusting portions or finding alternatives.
+        6. Once they choose a recipe, use GetRecipeInstructions for cooking steps.
+
+        If they want to eat out:
+        2. Ask for their preferred cuisine or restaurant type.
+        3. Use GoogleSearch to find restaurants in Singapore, including "${dietaryPreference}" in the query if it's a specific dietary requirement.
+        4. Suggest options and ask for their choice.
+        5. If applicable, emphasize restaurants that cater to their dietary preference.
+
+        Always be concise and relevant. Ask for clarification if needed.
+        Do not invent information or recipes. Only use data from the tools.
+        If unsure about dietary compliance, recommend the user to verify with the restaurant or check ingredients carefully.
+      `;
+
       const llmWithTools = model.bindTools(tools);
 
       const prompt = ChatPromptTemplate.fromMessages([
-        SystemMessagePromptTemplate.fromTemplate(
-          `You are a helpful meal planning assistant. The user has ${caloriesLeft} calories left for the day. 
-          Follow these steps:
-          1. Ask if they want to cook or eat out today.
-          
-          If they want to cook:
-          2. Ask if they have specific ingredients, a cuisine/diet preference, or a meal in mind.
-          3. Use the appropriate tool based on their response:
-             - FindRecipesByIngredients for specific ingredients
-             - ComplexRecipeSearch for cuisine/diet preferences or specific meals
-          4. Use GetRecipeInformation to check if recipes fit their calorie needs.
-          5. If a recipe doesn't fit, suggest adjusting portions or finding alternatives.
-          6. Once they choose a recipe, use GetRecipeInstructions for cooking steps.
-          
-          If they want to eat out:
-          2. Ask for their preferred cuisine or restaurant type.
-          3. Use GoogleSearch to find restaurants in Singapore.
-          4. Suggest options and ask for their choice.
-          
-          Always be concise and relevant. Ask for clarification if needed. 
-          Do not invent information or recipes. Only use data from the tools.`
-        ),
+        SystemMessagePromptTemplate.fromTemplate(systemPrompt),
         ...chatHistory.map(msg => 
           msg.role === 'user' 
             ? HumanMessagePromptTemplate.fromTemplate(msg.content)
@@ -98,58 +105,67 @@ export default function MealAssistant() {
   
       let toolResults = [];
   
-      if (initialResponse.additional_kwargs && initialResponse.additional_kwargs.tool_calls) {
-        for (const toolCall of initialResponse.additional_kwargs.tool_calls) {
-          if (toolCall.function && toolCall.function.name) {
-            const tool = tools.find(t => t.name === toolCall.function.name);
-            if (tool) {
+  if (initialResponse.additional_kwargs && initialResponse.additional_kwargs.tool_calls) {
+      for (const toolCall of initialResponse.additional_kwargs.tool_calls) {
+        if (toolCall.function && toolCall.function.name) {
+          const tool = tools.find(t => t.name === toolCall.function.name);
+          if (tool) {
+            try {
+              const args = JSON.parse(toolCall.function.arguments);
+              const toolOutput = await tool.func(args.input);
+              let parsedToolOutput;
               try {
-                const args = JSON.parse(toolCall.function.arguments);
-                const toolOutput = await tool.func(args.input);
-                toolResults.push({
-                  tool_call_id: toolCall.id,
-                  role: "tool",
-                  name: toolCall.function.name,
-                  content: toolOutput
-                });
-              } catch (error) {
-                console.error(`Error executing tool ${toolCall.function.name}:`, error);
-                toolResults.push({
-                  tool_call_id: toolCall.id,
-                  role: "tool",
-                  name: toolCall.function.name,
-                  content: `Error: ${error.message}`
-                });
+                parsedToolOutput = JSON.parse(toolOutput);
+              } catch {
+                parsedToolOutput = toolOutput;
               }
+              toolResults.push({
+                tool_call_id: toolCall.id,
+                role: "tool",
+                name: toolCall.function.name,
+                content: parsedToolOutput.text || parsedToolOutput
+              });
+            } catch (error) {
+              console.error(`Error executing tool ${toolCall.function.name}:`, error);
+              toolResults.push({
+                tool_call_id: toolCall.id,
+                role: "tool",
+                name: toolCall.function.name,
+                content: `Error: ${error.message}`
+              });
             }
           }
         }
       }
-  
-      console.log('Tool results:', toolResults);
-  
-      let responseContent = '';
-  
-      if (toolResults.length > 0) {
-        // If we have tool results, use them directly
-        responseContent = toolResults.map(result => `${result.content}`).join('\n\n');
-      } else if (initialResponse.content) {
-        // If there's content in the initial response, use that
-        responseContent = initialResponse.content;
-      } else {
-        // If we have neither tool results nor initial response content
-        responseContent = "I'm sorry, I couldn't generate a response. Could you please rephrase your question?";
-      }
-  
-      setChatHistory(prev => [...prev, { role: 'assistant', content: responseContent }]);
-    } catch (error) {
-      console.error('Error processing request:', error);
-      setChatHistory(prev => [...prev, { role: 'assistant', content: `I'm sorry, there was an error processing your request: ${error.message}` }]);
-    } finally {
-      setLoading(false);
-      setUserInput('');
     }
-  };
+
+    console.log('Tool results:', toolResults);
+
+    let responseContent = '';
+
+    if (toolResults.length > 0) {
+      const toolResultsPrompt = toolResults.map(result => `${result.name}: ${result.content}`).join('\n\n');
+      
+      const finalResponse = await chain.invoke({
+        input: `Based on these tool results, provide a summary and recommendation for the user:\n${toolResultsPrompt}`
+      });
+
+      responseContent = finalResponse.content || toolResults[0].content;
+    } else if (initialResponse.content) {
+      responseContent = initialResponse.content;
+    } else {
+      responseContent = "I'm sorry, I couldn't generate a response. Could you please rephrase your question?";
+    }
+
+    setChatHistory(prev => [...prev, { role: 'assistant', content: responseContent }]);
+  } catch (error) {
+    console.error('Error processing request:', error);
+    setChatHistory(prev => [...prev, { role: 'assistant', content: `I'm sorry, there was an error processing your request: ${error.message}` }]);
+  } finally {
+    setLoading(false);
+    setUserInput('');
+  }
+};
   
   
 

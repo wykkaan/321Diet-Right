@@ -43,7 +43,6 @@ export const ComplexRecipeSearchTool = new DynamicTool({
     if (cuisine) url += `&cuisine=${cuisine}`;
     if (diet) url += `&diet=${diet}`;
     if (intolerances) url += `&intolerances=${intolerances}`;
-    
     const response = await fetch(url);
     if (!response.ok) {
       throw new Error(`Got ${response.status} error from Spoonacular API: ${response.statusText}`);
@@ -213,5 +212,46 @@ export const GoogleSearchTool = new DynamicTool({
     formattedResults += "Note: Calorie information may not be available for all restaurants. Please check with the restaurant for the most accurate and up-to-date nutritional information.";
     
     return formattedResults;
+  }
+});
+
+
+export const HalalRecipeSearchTool = new DynamicTool({
+  name: "halal-recipe-search",
+  description: "Search for halal recipes based on various parameters like cuisine, diet, etc. Input should be a JSON string with query, cuisine, diet, intolerances, and number.",
+  func: async (input) => {
+    const apiKey = process.env.NEXT_PUBLIC_SPOONACULAR_API_KEY;
+    if (!apiKey) {
+      throw new Error("Spoonacular API key not set. You can set it as NEXT_PUBLIC_SPOONACULAR_API_KEY in your environment variables.");
+    }
+    const { query, cuisine, diet, intolerances, number = 5 } = JSON.parse(input);
+    let url = `https://api.spoonacular.com/recipes/complexSearch?apiKey=${apiKey}&query=${query}&number=${number}`;
+    if (cuisine) url += `&cuisine=${cuisine}`;
+    if (diet) url += `&diet=${diet}`;
+    if (intolerances) url += `&intolerances=${intolerances}`;
+    
+    // Add exclusions for halal
+    url += '&excludeIngredients=pork,lard,alcohol,wine,beer';
+    
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Got ${response.status} error from Spoonacular API: ${response.statusText}`);
+    }
+    const data = await response.json();
+    let formattedResults = `Here are some halal ${cuisine || ''} recipes ${diet ? 'suitable for ' + diet + ' diet' : ''} ${intolerances ? 'without ' + intolerances : ''}:\n\n`;
+    const recipeData = {};
+    if (data.results.length > 0) {
+      data.results.forEach((recipe, index) => {
+        formattedResults += `${index + 1}. ${recipe.title}\n`;
+        recipeData[index + 1] = { id: recipe.id, title: recipe.title };
+      });
+      formattedResults += "\nPlease choose a recipe by its number or name.";
+    } else {
+      formattedResults = "I'm sorry, I couldn't find any halal recipes matching your criteria. Would you like to try a different cuisine or type of dish?";
+    }
+    return JSON.stringify({
+      text: formattedResults,
+      recipes: recipeData
+    });
   }
 });
