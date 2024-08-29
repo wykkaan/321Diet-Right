@@ -96,11 +96,6 @@ export default function MealAssistant() {
       const initialResponse = await chain.invoke({ input: userInput });
       console.log('Initial response:', initialResponse);
   
-      // Add the AI's response to the chat history
-      if (initialResponse.content) {
-        setChatHistory(prev => [...prev, { role: 'assistant', content: initialResponse.content }]);
-      }
-  
       let toolResults = [];
   
       if (initialResponse.additional_kwargs && initialResponse.additional_kwargs.tool_calls) {
@@ -111,47 +106,42 @@ export default function MealAssistant() {
               try {
                 const args = JSON.parse(toolCall.function.arguments);
                 const toolOutput = await tool.func(args.input);
-                let parsedToolOutput = toolOutput;
-                if (typeof toolOutput === 'string' && toolOutput.startsWith('{') && toolOutput.endsWith('}')) {
-                  parsedToolOutput = JSON.parse(toolOutput);
-                }
-                const toolMessage = new ToolMessage({
-                  content: parsedToolOutput.text || parsedToolOutput,
+                toolResults.push({
                   tool_call_id: toolCall.id,
+                  role: "tool",
                   name: toolCall.function.name,
+                  content: toolOutput
                 });
-                toolResults.push(toolMessage);
               } catch (error) {
                 console.error(`Error executing tool ${toolCall.function.name}:`, error);
-                const errorToolMessage = new ToolMessage({
-                  content: `Error: ${error.message}`,
+                toolResults.push({
                   tool_call_id: toolCall.id,
+                  role: "tool",
                   name: toolCall.function.name,
-                  status: "error",
+                  content: `Error: ${error.message}`
                 });
-                toolResults.push(errorToolMessage);
               }
             }
           }
         }
       }
-
+  
+      console.log('Tool results:', toolResults);
+  
+      let responseContent = '';
+  
       if (toolResults.length > 0) {
-        setChatHistory(prev => [...prev, ...toolResults]);
-        console.log('Tool results:', toolResults);
-
-        const toolResultsPrompt = toolResults.map(result => `${result.name}: ${result.content}`).join('\n');
-        
-        const finalResponse = await chain.invoke({
-          input: `Based on these tool results, provide a summary and recommendation for the user:\n${toolResultsPrompt}`
-        });
-
-        setChatHistory(prev => [...prev, { role: 'assistant', content: finalResponse.content }]);
+        // If we have tool results, use them directly
+        responseContent = toolResults.map(result => `${result.content}`).join('\n\n');
       } else if (initialResponse.content) {
-        setChatHistory(prev => [...prev, { role: 'assistant', content: initialResponse.content }]);
+        // If there's content in the initial response, use that
+        responseContent = initialResponse.content;
       } else {
-        setChatHistory(prev => [...prev, { role: 'assistant', content: "I'm sorry, I couldn't generate a response. Could you please rephrase your question?" }]);
+        // If we have neither tool results nor initial response content
+        responseContent = "I'm sorry, I couldn't generate a response. Could you please rephrase your question?";
       }
+  
+      setChatHistory(prev => [...prev, { role: 'assistant', content: responseContent }]);
     } catch (error) {
       console.error('Error processing request:', error);
       setChatHistory(prev => [...prev, { role: 'assistant', content: `I'm sorry, there was an error processing your request: ${error.message}` }]);
@@ -163,57 +153,57 @@ export default function MealAssistant() {
   
   
 
-    return (
-        <div className="flex flex-col h-full">
-          {!isChatStarted ? (
-            <form onSubmit={handleCaloriesSubmit} className="mb-4">
-              <label htmlFor="calories" className="block mb-2">Enter your remaining calories for the day:</label>
-              <input
-                type="number"
-                id="calories"
-                value={caloriesLeft}
-                onChange={(e) => setCaloriesLeft(e.target.value)}
-                className="w-full p-2 border border-gray-300 rounded"
-                required
-              />
-              <button type="submit" className="mt-2 bg-[#3C4E2A] text-[#F5E9D4] px-4 py-2 rounded">
-                Start Meal Planning
-              </button>
-            </form>
-          ) : (
-            <>
-              <div className="flex-grow overflow-y-auto mb-4 p-4 bg-gray-100 rounded">
-                {chatHistory.map((msg, index) => (
-                  <div key={index} className={`mb-2 ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
-                    <span className={`inline-block p-2 rounded ${msg.role === 'user' ? 'bg-blue-500 text-white' : 'bg-white'}`}>
-                      {msg.content}
-                    </span>
-                  </div>
-                ))}
-                {loading && <div className="text-center">Thinking...</div>}
+  return (
+    <div className="bg-white rounded-lg shadow-md p-6">
+      {!isChatStarted ? (
+        <form onSubmit={handleCaloriesSubmit} className="mb-4">
+          <label htmlFor="calories" className="block mb-2 font-semibold">Enter your remaining calories for the day:</label>
+          <input
+            type="number"
+            id="calories"
+            value={caloriesLeft}
+            onChange={(e) => setCaloriesLeft(e.target.value)}
+            className="w-full p-2 border border-gray-300 rounded mb-4"
+            required
+          />
+          <button type="submit" className="w-full bg-[#3C4E2A] text-[#F5E9D4] px-4 py-2 rounded hover:bg-[#2A3E1A] transition-colors">
+            Start Meal Planning
+          </button>
+        </form>
+      ) : (
+        <>
+          <div className="h-96 mb-4 p-4 bg-gray-100 rounded overflow-y-auto">
+            {chatHistory.map((msg, index) => (
+              <div key={index} className={`mb-2 ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
+                <span className={`inline-block p-2 rounded-lg ${msg.role === 'user' ? 'bg-[#3C4E2A] text-[#F5E9D4]' : 'bg-white border border-gray-300'}`}>
+                  {msg.content}
+                </span>
               </div>
-              <form onSubmit={handleSubmit} className="flex">
-                <input
-                  type="text"
-                  value={userInput}
-                  onChange={(e) => setUserInput(e.target.value)}
-                  placeholder="Ask about meals or recipes..."
-                  className="flex-grow p-2 border border-gray-300 rounded-l"
-                  disabled={loading}
-                />
-                <button
-                  type="submit"
-                  className="bg-[#3C4E2A] text-[#F5E9D4] px-4 py-2 rounded-r"
-                  disabled={loading}
-                >
-                  Send
-                </button>
-              </form>
-              <div className="mt-2 text-sm text-gray-600">
-                Calories left for today: {caloriesLeft}
-              </div>
-            </>
-          )}
-        </div>
-      );
-    }
+            ))}
+            {loading && <div className="text-center text-gray-500">Thinking...</div>}
+          </div>
+          <form onSubmit={handleSubmit} className="flex mb-4">
+            <input
+              type="text"
+              value={userInput}
+              onChange={(e) => setUserInput(e.target.value)}
+              placeholder="Ask about meals or recipes..."
+              className="flex-grow p-2 border border-gray-300 rounded-l"
+              disabled={loading}
+            />
+            <button
+              type="submit"
+              className="bg-[#3C4E2A] text-[#F5E9D4] px-4 py-2 rounded-r hover:bg-[#2A3E1A] transition-colors"
+              disabled={loading}
+            >
+              Send
+            </button>
+          </form>
+          <div className="text-sm text-gray-600">
+            Calories left for today: <span className="font-semibold">{caloriesLeft}</span>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
