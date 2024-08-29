@@ -135,20 +135,22 @@ export default function MealAssistant() {
           }
         }
       }
-  
+
       if (toolResults.length > 0) {
         setChatHistory(prev => [...prev, ...toolResults]);
         console.log('Tool results:', toolResults);
-  
+
         const toolResultsPrompt = toolResults.map(result => `${result.name}: ${result.content}`).join('\n');
         
         const finalResponse = await chain.invoke({
           input: `Based on these tool results, provide a summary and recommendation for the user:\n${toolResultsPrompt}`
         });
-  
-        if (finalResponse.content) {
-          setChatHistory(prev => [...prev, { role: 'assistant', content: finalResponse.content }]);
-        }
+
+        setChatHistory(prev => [...prev, { role: 'assistant', content: finalResponse.content }]);
+      } else if (initialResponse.content) {
+        setChatHistory(prev => [...prev, { role: 'assistant', content: initialResponse.content }]);
+      } else {
+        setChatHistory(prev => [...prev, { role: 'assistant', content: "I'm sorry, I couldn't generate a response. Could you please rephrase your question?" }]);
       }
     } catch (error) {
       console.error('Error processing request:', error);
