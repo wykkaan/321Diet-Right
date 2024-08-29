@@ -1,4 +1,3 @@
-// src/lib/meal-assistant-tools.js
 import { DynamicTool } from "@langchain/core/tools";
 
 export const FindRecipesByIngredientsTool = new DynamicTool({
@@ -16,11 +15,18 @@ export const FindRecipesByIngredientsTool = new DynamicTool({
     }
     const data = await response.json();
     let formattedResults = "Here are some recipes based on your ingredients:\n\n";
+    const recipeData = {};
     data.forEach((recipe, index) => {
       formattedResults += `${index + 1}. ${recipe.title}\n`;
       formattedResults += `   Missing ingredients: ${recipe.missedIngredients.map(ing => ing.name).join(', ')}\n\n`;
+      recipeData[index + 1] = { id: recipe.id, title: recipe.title };
     });
-    return formattedResults;
+    formattedResults += "\nPlease choose a recipe by its number or name.";
+    global.lastRecipeSearch = recipeData;
+    return JSON.stringify({
+      text: formattedResults,
+      recipes: recipeData
+    });
   }
 });
 
@@ -50,6 +56,7 @@ export const ComplexRecipeSearchTool = new DynamicTool({
       recipeData[index + 1] = { id: recipe.id, title: recipe.title };
     });
     formattedResults += "\nPlease choose a recipe by its number or name.";
+    global.lastRecipeSearch = recipeData;
     return JSON.stringify({
       text: formattedResults,
       recipes: recipeData
@@ -59,63 +66,96 @@ export const ComplexRecipeSearchTool = new DynamicTool({
 
 export const GetRecipeInformationTool = new DynamicTool({
   name: "get-recipe-information",
-  description: "Get detailed information about a specific recipe. Input should be a JSON string with recipeData (from complex-recipe-search) and userChoice (number or name of recipe).",
+  description: "Get detailed information about a specific recipe. Input should be a recipe name or number from the previous search results.",
   func: async (input) => {
-    const { recipeData, userChoice } = JSON.parse(input);
     const apiKey = process.env.NEXT_PUBLIC_SPOONACULAR_API_KEY;
     if (!apiKey) {
       throw new Error("Spoonacular API key not set. You can set it as NEXT_PUBLIC_SPOONACULAR_API_KEY in your environment variables.");
     }
 
     let recipeId;
-    if (typeof userChoice === 'number') {
-      recipeId = recipeData[userChoice].id;
-    } else {
-      const recipe = Object.values(recipeData).find(r => r.title.toLowerCase() === userChoice.toLowerCase());
-      if (recipe) {
-        recipeId = recipe.id;
-      } else {
-        throw new Error("Recipe not found. Please choose a valid recipe number or name.");
-      }
-    }
+    let recipeTitle;
 
-    const url = `https://api.spoonacular.com/recipes/${recipeId}/information?apiKey=${apiKey}`;
+    try {
+      const inputNumber = parseInt(input);
+      if (!isNaN(inputNumber) && inputNumber > 0 && inputNumber <= 5) {
+        recipeId = global.lastRecipeSearch[inputNumber].id;
+        recipeTitle = global.lastRecipeSearch[inputNumber].title;
+      } else {
+        const recipe = Object.values(global.lastRecipeSearch).find(r => r.title.toLowerCase() === input.toLowerCase());
+        if (recipe) {
+          recipeId = recipe.id;
+          recipeTitle = recipe.title;
+        } else {
+          throw new Error("Recipe not found. Please choose a valid recipe number or name from the previous search results.");
+        }
+      }
+    } catch (error) {
+      console.error("Error processing recipe choice:", error);
+      return `Error: ${error.message}. Please try again with a valid recipe number or name.`;
+    }
+    try{
+    const url = `https://api.spoonacular.com/recipes/${recipeId}/information?apiKey=${apiKey}&includeNutrition=true`;
     const response = await fetch(url);
     if (!response.ok) {
       throw new Error(`Got ${response.status} error from Spoonacular API: ${response.statusText}`);
     }
     const data = await response.json();
-    let formattedResults = `Recipe Information for ${data.title}:\n\n`;
-    formattedResults += `Calories: ${data.nutrition.nutrients.find(n => n.name === "Calories").amount} kcal\n`;
-    formattedResults += `Protein: ${data.nutrition.nutrients.find(n => n.name === "Protein").amount}g\n`;
-    formattedResults += `Fat: ${data.nutrition.nutrients.find(n => n.name === "Fat").amount}g\n`;
-    formattedResults += `Carbs: ${data.nutrition.nutrients.find(n => n.name === "Carbohydrates").amount}g\n`;
-    formattedResults += `Preparation Time: ${data.readyInMinutes} minutes\n`;
-    formattedResults += `Servings: ${data.servings}\n`;
+    let formattedResults = `Recipe Information for ${recipeTitle}:\n\n`;
+    
+    // Safely access nutrition information
+    const nutrition = data.nutrition || {};
+    const nutrients = nutrition.nutrients || [];
+    const getnutrientAmount = (name) => {
+      const nutrient = nutrients.find(n => n.name === name);
+      return nutrient ? `${nutrient.amount} ${nutrient.unit}` : 'Not available';
+    };
+
+    formattedResults += `Calories: ${getnutrientAmount("Calories")}\n`;
+    formattedResults += `Protein: ${getnutrientAmount("Protein")}\n`;
+    formattedResults += `Fat: ${getnutrientAmount("Fat")}\n`;
+    formattedResults += `Carbs: ${getnutrientAmount("Carbohydrates")}\n`;
+    formattedResults += `Preparation Time: ${data.readyInMinutes || 'Not available'} minutes\n`;
+    formattedResults += `Servings: ${data.servings || 'Not available'}\n`;
+    
     return formattedResults;
   }
-});
+  catch(error){
+    console.error("Error processing recipe choice:", error);
+    return `Error: Unable to fetch information for the recipe. ${error.message}`;
+  }
+}
+}); 
 
 export const GetRecipeInstructionsTool = new DynamicTool({
   name: "get-recipe-instructions",
-  description: "Get step-by-step instructions for a specific recipe. Input should be a JSON string with recipeData (from complex-recipe-search) and userChoice (number or name of recipe).",
+  description: "Get step-by-step instructions for a specific recipe. Input should be a recipe name or number from the previous search results.",
   func: async (input) => {
-    const { recipeData, userChoice } = JSON.parse(input);
     const apiKey = process.env.NEXT_PUBLIC_SPOONACULAR_API_KEY;
     if (!apiKey) {
       throw new Error("Spoonacular API key not set. You can set it as NEXT_PUBLIC_SPOONACULAR_API_KEY in your environment variables.");
     }
 
     let recipeId;
-    if (typeof userChoice === 'number') {
-      recipeId = recipeData[userChoice].id;
-    } else {
-      const recipe = Object.values(recipeData).find(r => r.title.toLowerCase() === userChoice.toLowerCase());
-      if (recipe) {
-        recipeId = recipe.id;
+    let recipeTitle;
+
+    try {
+      const inputNumber = parseInt(input);
+      if (!isNaN(inputNumber) && inputNumber > 0 && inputNumber <= 5) {
+        recipeId = global.lastRecipeSearch[inputNumber].id;
+        recipeTitle = global.lastRecipeSearch[inputNumber].title;
       } else {
-        throw new Error("Recipe not found. Please choose a valid recipe number or name.");
+        const recipe = Object.values(global.lastRecipeSearch).find(r => r.title.toLowerCase() === input.toLowerCase());
+        if (recipe) {
+          recipeId = recipe.id;
+          recipeTitle = recipe.title;
+        } else {
+          throw new Error("Recipe not found. Please choose a valid recipe number or name from the previous search results.");
+        }
       }
+    } catch (error) {
+      console.error("Error processing recipe choice:", error);
+      return `Error: ${error.message}. Please try again with a valid recipe number or name.`;
     }
 
     const url = `https://api.spoonacular.com/recipes/${recipeId}/analyzedInstructions?apiKey=${apiKey}`;
@@ -124,7 +164,7 @@ export const GetRecipeInstructionsTool = new DynamicTool({
       throw new Error(`Got ${response.status} error from Spoonacular API: ${response.statusText}`);
     }
     const data = await response.json();
-    let formattedResults = `Recipe Instructions for ${recipeData[userChoice].title}:\n\n`;
+    let formattedResults = `Recipe Instructions for ${recipeTitle}:\n\n`;
     if (data[0] && data[0].steps) {
       data[0].steps.forEach((step, index) => {
         formattedResults += `${index + 1}. ${step.step}\n`;

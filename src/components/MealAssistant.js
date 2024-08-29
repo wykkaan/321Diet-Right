@@ -31,6 +31,9 @@ export default function MealAssistant() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!userInput.trim()) return;
+  
+    setLoading(true);
+    setChatHistory(prev => [...prev, { role: 'user', content: userInput }]);
 
     try {
       const groqApiKey = process.env.NEXT_PUBLIC_GROQ_API_KEY;
@@ -57,30 +60,29 @@ export default function MealAssistant() {
 
       const llmWithTools = model.bindTools(tools);
 
-        const prompt = ChatPromptTemplate.fromMessages([
-          SystemMessagePromptTemplate.fromTemplate(
-            `You are a helpful meal planning assistant. The user has ${caloriesLeft} calories left for the day. 
-            First, ask the user if they want to cook or eat out today.
-            
-            If they want to cook:
-            1. Ask if they have specific ingredients they want to use or if they have a type of cuisine or diet in mind or a meal in mind.
-            2. If they have ingredients:
-               a. Use FindRecipesByIngredients to get initial recipe ideas.
-               b. Then use ComplexRecipeSearch to refine based on cuisine or dietary preferences.
-            3. If they have a cuisine or diet preference:
-               a. Use ComplexRecipeSearch directly with their preferences.
-            4. If they they have a meal in mind, use ComplexRecipeSearch with their query.
-            5. For each potential recipe, use GetRecipeInformation to check if it fits their calorie needs.
-            6. If a recipe doesn't fit, ask if they want to try another or adjust portions.
-            7. Once they choose a recipe, use GetRecipeInstructions to provide cooking steps.
-            
-            If they want to eat out:
-            1. Ask for their preferred cuisine or type of restaurant.
-            2. Use GoogleSearch to find restaurants in Singapore.
-            3. Suggest options and ask for their choice.
-            
-            Always be concise and relevant. Ask for clarification if needed.`
-          ),
+      const prompt = ChatPromptTemplate.fromMessages([
+        SystemMessagePromptTemplate.fromTemplate(
+          `You are a helpful meal planning assistant. The user has ${caloriesLeft} calories left for the day. 
+          Follow these steps:
+          1. Ask if they want to cook or eat out today.
+          
+          If they want to cook:
+          2. Ask if they have specific ingredients, a cuisine/diet preference, or a meal in mind.
+          3. Use the appropriate tool based on their response:
+             - FindRecipesByIngredients for specific ingredients
+             - ComplexRecipeSearch for cuisine/diet preferences or specific meals
+          4. Use GetRecipeInformation to check if recipes fit their calorie needs.
+          5. If a recipe doesn't fit, suggest adjusting portions or finding alternatives.
+          6. Once they choose a recipe, use GetRecipeInstructions for cooking steps.
+          
+          If they want to eat out:
+          2. Ask for their preferred cuisine or restaurant type.
+          3. Use GoogleSearch to find restaurants in Singapore.
+          4. Suggest options and ask for their choice.
+          
+          Always be concise and relevant. Ask for clarification if needed. 
+          Do not invent information or recipes. Only use data from the tools.`
+        ),
         ...chatHistory.map(msg => 
           msg.role === 'user' 
             ? HumanMessagePromptTemplate.fromTemplate(msg.content)
@@ -88,27 +90,66 @@ export default function MealAssistant() {
         ),
         HumanMessagePromptTemplate.fromTemplate("{input}")
       ]);
-
+  
       const chain = prompt.pipe(llmWithTools);
 
-      const result = await chain.invoke({ input: userInput });
-
-      if (result.tool_calls) {
-        for (const toolCall of result.tool_calls) {
-          const tool = tools.find(t => t.name === toolCall.name);
-          if (tool) {
-            const toolOutput = await tool.invoke(toolCall.args);
-            const toolMessage = new ToolMessage({
-              content: toolOutput,
-              name: toolCall.name,
-              tool_call_id: toolCall.id,
-            });
-            setChatHistory(prev => [...prev, toolMessage]);
+      const initialResponse = await chain.invoke({ input: userInput });
+      console.log('Initial response:', initialResponse);
+  
+      // Add the AI's response to the chat history
+      if (initialResponse.content) {
+        setChatHistory(prev => [...prev, { role: 'assistant', content: initialResponse.content }]);
+      }
+  
+      let toolResults = [];
+  
+      if (initialResponse.additional_kwargs && initialResponse.additional_kwargs.tool_calls) {
+        for (const toolCall of initialResponse.additional_kwargs.tool_calls) {
+          if (toolCall.function && toolCall.function.name) {
+            const tool = tools.find(t => t.name === toolCall.function.name);
+            if (tool) {
+              try {
+                const args = JSON.parse(toolCall.function.arguments);
+                const toolOutput = await tool.func(args.input);
+                let parsedToolOutput = toolOutput;
+                if (typeof toolOutput === 'string' && toolOutput.startsWith('{') && toolOutput.endsWith('}')) {
+                  parsedToolOutput = JSON.parse(toolOutput);
+                }
+                const toolMessage = new ToolMessage({
+                  content: parsedToolOutput.text || parsedToolOutput,
+                  tool_call_id: toolCall.id,
+                  name: toolCall.function.name,
+                });
+                toolResults.push(toolMessage);
+              } catch (error) {
+                console.error(`Error executing tool ${toolCall.function.name}:`, error);
+                const errorToolMessage = new ToolMessage({
+                  content: `Error: ${error.message}`,
+                  tool_call_id: toolCall.id,
+                  name: toolCall.function.name,
+                  status: "error",
+                });
+                toolResults.push(errorToolMessage);
+              }
+            }
           }
         }
       }
-
-      setChatHistory(prev => [...prev, { role: 'assistant', content: result.content }]);
+  
+      if (toolResults.length > 0) {
+        setChatHistory(prev => [...prev, ...toolResults]);
+        console.log('Tool results:', toolResults);
+  
+        const toolResultsPrompt = toolResults.map(result => `${result.name}: ${result.content}`).join('\n');
+        
+        const finalResponse = await chain.invoke({
+          input: `Based on these tool results, provide a summary and recommendation for the user:\n${toolResultsPrompt}`
+        });
+  
+        if (finalResponse.content) {
+          setChatHistory(prev => [...prev, { role: 'assistant', content: finalResponse.content }]);
+        }
+      }
     } catch (error) {
       console.error('Error processing request:', error);
       setChatHistory(prev => [...prev, { role: 'assistant', content: `I'm sorry, there was an error processing your request: ${error.message}` }]);
@@ -117,6 +158,8 @@ export default function MealAssistant() {
       setUserInput('');
     }
   };
+  
+  
 
     return (
         <div className="flex flex-col h-full">
