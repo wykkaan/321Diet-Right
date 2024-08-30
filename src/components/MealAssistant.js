@@ -74,12 +74,14 @@ export default function MealAssistant() {
         4. Use GetRecipeInformation to check if recipes fit their calorie needs.
         5. If a recipe doesn't fit, suggest adjusting portions or finding alternatives.
         6. Once they choose a recipe, use GetRecipeInstructions for cooking steps.
+        7. If any of the tools fail, answer based on what you know.
 
         If they want to eat out:
         2. Ask for their preferred cuisine or restaurant type.
         3. Use GoogleSearch to find restaurants in Singapore, including "${dietaryPreference}" in the query if it's a specific dietary requirement.
         4. Suggest options and ask for their choice.
         5. If applicable, emphasize restaurants that cater to their dietary preference.
+        6. If any of the tools fail, answer based on what you know.
 
          Additional instructions:
         - Be attentive to requests for new suggestions or alternatives. If the user asks for different options, use the appropriate tool to find new recipes or restaurants.
