@@ -1,9 +1,78 @@
-// src\app\dashboard\page.js
+// src/app/dashboard/page.js
 'use client';
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/AuthProvider';
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import Link from 'next/link';
+
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
+
+const CheckoutForm = ({ onSubscriptionComplete }) => {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [error, setError] = useState(null);
+  const [processing, setProcessing] = useState(false);
+  const { getToken } = useAuth();
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    setProcessing(true);
+
+    if (!stripe || !elements) {
+      return;
+    }
+
+    try {
+      const token = await getToken();
+      const response = await fetch('/api/create-subscription', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create subscription');
+      }
+
+      const { clientSecret } = await response.json();
+
+      const result = await stripe.confirmCardPayment(clientSecret, {
+        payment_method: {
+          card: elements.getElement(CardElement),
+        }
+      });
+
+      if (result.error) {
+        setError(result.error.message);
+      } else {
+        onSubscriptionComplete();
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <CardElement />
+      {error && <div className="text-red-500 mt-2">{error}</div>}
+      <button 
+        type="submit" 
+        disabled={!stripe || processing}
+        className="w-full bg-[#008080] text-white py-3 rounded-lg font-semibold mt-4"
+      >
+        {processing ? 'Processing...' : 'Subscribe Now'}
+      </button>
+    </form>
+  );
+};
 
 const Dashboard = () => {
   const [userData, setUserData] = useState(null);
@@ -11,6 +80,8 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentWeight, setCurrentWeight] = useState(null);
+  const [isPremium, setIsPremium] = useState(false);
+  const [showSubscribeForm, setShowSubscribeForm] = useState(false);
   const router = useRouter();
   const { user, loading: authLoading, getToken } = useAuth();
 
@@ -18,8 +89,34 @@ const Dashboard = () => {
     if (!authLoading && user) {
       fetchUserData();
       fetchFoodLog();
+      checkSubscriptionStatus();
     }
   }, [user, authLoading]);
+
+  const checkSubscriptionStatus = async () => {
+    try {
+      const token = await getToken();
+      const response = await fetch('/api/check-subscription', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to check subscription status');
+      }
+
+      const { isActive } = await response.json();
+      setIsPremium(isActive);
+    } catch (err) {
+      console.error('Error checking subscription status:', err);
+    }
+  };
+
+  const handleSubscriptionComplete = () => {
+    setShowSubscribeForm(false);
+    checkSubscriptionStatus();
+  };
 
   const renderFoodEntry = (entry) => {
     if (entry.food_menu) {
@@ -160,10 +257,37 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Premium Button */}
-      <button className="w-full bg-[#008080] text-white py-3 rounded-lg font-semibold mb-4">
-        GO PREMIUM
-      </button>
+      {/* Premium Features or Go Premium Button */}
+      {isPremium ? (
+        <div className="mb-4">
+          <h2 className="text-xl font-bold mb-2">Premium Features</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Link href="/meal-assistant" className="bg-[#3C4E2A] text-[#F5E9D4] p-4 rounded-lg hover:bg-[#2A3E1A] transition-colors">
+              <h3 className="text-lg font-bold mb-2">Meal Assistant</h3>
+              <p>Get personalized meal recommendations and nutrition advice.</p>
+            </Link>
+            <Link href="/image-recognition" className="bg-[#3C4E2A] text-[#F5E9D4] p-4 rounded-lg hover:bg-[#2A3E1A] transition-colors">
+              <h3 className="text-lg font-bold mb-2">Image Recognition</h3>
+              <p>Analyze food images for quick and easy logging.</p>
+            </Link>
+          </div>
+        </div>
+      ) : (
+        <div className="mb-4">
+          {showSubscribeForm ? (
+            <Elements stripe={stripePromise}>
+              <CheckoutForm onSubscriptionComplete={handleSubscriptionComplete} />
+            </Elements>
+          ) : (
+            <button 
+              onClick={() => setShowSubscribeForm(true)}
+              className="w-full bg-[#008080] text-white py-3 rounded-lg font-semibold"
+            >
+              GO PREMIUM
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Meal Sections */}
       {['breakfast', 'lunch', 'dinner', 'snacks'].map((meal) => (
