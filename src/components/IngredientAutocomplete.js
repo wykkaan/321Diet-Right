@@ -1,3 +1,4 @@
+// components/IngredientAutocomplete.js
 'use client'
 
 import { useState, useEffect } from 'react';
@@ -8,6 +9,7 @@ const IngredientAutocomplete = ({ onIngredientSelect }) => {
   const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [selectedIngredient, setSelectedIngredient] = useState(null);
   const [weight, setWeight] = useState(100);
 
   useEffect(() => {
@@ -52,6 +54,12 @@ const IngredientAutocomplete = ({ onIngredientSelect }) => {
   }, [query]);
 
   const handleSelect = async (ingredient) => {
+    setSelectedIngredient(ingredient);
+    setQuery('');
+    setSuggestions([]);
+  };
+
+  const handleWeightSubmit = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
 
@@ -59,7 +67,7 @@ const IngredientAutocomplete = ({ onIngredientSelect }) => {
         throw new Error('No active session');
       }
 
-      const response = await fetch(`/api/ingredient-info/${ingredient.id}?weight=${weight}`, {
+      const response = await fetch(`/api/ingredient-info/${selectedIngredient.id}?weight=${weight}`, {
         headers: {
           'Authorization': `Bearer ${session.access_token}`
         }
@@ -71,8 +79,7 @@ const IngredientAutocomplete = ({ onIngredientSelect }) => {
 
       const data = await response.json();
       onIngredientSelect({...data, weight});
-      setQuery('');
-      setSuggestions([]);
+      setSelectedIngredient(null);
       setWeight(100); // Reset weight to default after selection
     } catch (err) {
       console.error('Error fetching ingredient info:', err);
@@ -82,36 +89,50 @@ const IngredientAutocomplete = ({ onIngredientSelect }) => {
 
   return (
     <div className="relative">
-      <input
-        type="text"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        placeholder="Search for an ingredient"
-        className="w-full p-2 border border-[#3C4E2A] rounded bg-[#F5E9D4] text-[#3C4E2A] mb-2"
-      />
-      <div className="flex items-center mb-2">
-        <input
-          type="number"
-          value={weight}
-          onChange={(e) => setWeight(Math.max(1, parseInt(e.target.value)))}
-          className="w-1/2 p-2 border border-[#3C4E2A] rounded bg-[#F5E9D4] text-[#3C4E2A] mr-2"
-        />
-        <span className="text-[#3C4E2A]">grams</span>
-      </div>
-      {loading && <p className="text-[#3C4E2A]">Loading...</p>}
-      {error && <p className="text-red-500">{error}</p>}
-      {suggestions.length > 0 && (
-        <ul className="absolute z-10 w-full bg-[#F5E9D4] border border-[#3C4E2A] rounded mt-1">
-          {suggestions.map((suggestion) => (
-            <li
-              key={suggestion.id}
-              onClick={() => handleSelect(suggestion)}
-              className="p-2 hover:bg-[#3C4E2A] hover:text-[#F5E9D4] cursor-pointer"
-            >
-              {suggestion.name}
-            </li>
-          ))}
-        </ul>
+      {!selectedIngredient ? (
+        <>
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search for an ingredient"
+            className="w-full p-2 border border-[#3C4E2A] rounded bg-[#F5E9D4] text-[#3C4E2A] mb-2"
+          />
+          {loading && <p className="text-[#3C4E2A]">Loading...</p>}
+          {error && <p className="text-red-500">{error}</p>}
+          {suggestions.length > 0 && (
+            <ul className="absolute z-10 w-full bg-[#F5E9D4] border border-[#3C4E2A] rounded mt-1">
+              {suggestions.map((suggestion) => (
+                <li
+                  key={suggestion.id}
+                  onClick={() => handleSelect(suggestion)}
+                  className="p-2 hover:bg-[#3C4E2A] hover:text-[#F5E9D4] cursor-pointer"
+                >
+                  {suggestion.name}
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      ) : (
+        <div className="mt-2">
+          <p>Enter weight for {selectedIngredient.name}:</p>
+          <div className="flex items-center mb-2">
+            <input
+              type="number"
+              value={weight}
+              onChange={(e) => setWeight(Math.max(1, parseInt(e.target.value)))}
+              className="w-1/2 p-2 border border-[#3C4E2A] rounded bg-[#F5E9D4] text-[#3C4E2A] mr-2"
+            />
+            <span className="text-[#3C4E2A]">grams</span>
+          </div>
+          <button 
+            onClick={handleWeightSubmit}
+            className="bg-[#3C4E2A] text-[#F5E9D4] px-4 py-2 rounded"
+          >
+            Add Ingredient
+          </button>
+        </div>
       )}
     </div>
   );

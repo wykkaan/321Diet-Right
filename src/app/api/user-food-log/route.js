@@ -1,4 +1,4 @@
-// src\app\api\user-food-log\route.js
+// src/app/api/user-food-log/route.js
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
@@ -31,6 +31,11 @@ export async function GET(request) {
         food_menu (
           title,
           restaurant_chain
+        ),
+        recipes (
+          name,
+          ingredients,
+          instructions
         )
       `)
       .eq('user_id', user.id)

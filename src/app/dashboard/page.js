@@ -21,6 +21,31 @@ const Dashboard = () => {
     }
   }, [user, authLoading]);
 
+  const renderFoodEntry = (entry) => {
+    if (entry.food_menu) {
+      return (
+        <div key={entry.id} className="mb-2">
+          <p>{entry.food_menu.title}</p>
+          <p className="text-sm">{entry.calories} kcal</p>
+        </div>
+      );
+    } else if (entry.recipes) {
+      return (
+        <div key={entry.id} className="mb-2">
+          <p>{entry.recipes.name}</p>
+          <p className="text-sm">{entry.calories} kcal</p>
+        </div>
+      );
+    } else {
+      return (
+        <div key={entry.id} className="mb-2">
+          <p>Unknown food entry</p>
+          <p className="text-sm">{entry.calories} kcal</p>
+        </div>
+      );
+    }
+  };
+
   const fetchUserData = async () => {
     try {
       const token = await getToken();
@@ -144,12 +169,7 @@ const Dashboard = () => {
       {['breakfast', 'lunch', 'dinner', 'snacks'].map((meal) => (
         <div key={meal} className="bg-[#F5E9D4] border border-[#3C4E2A] rounded-lg p-4 mb-4">
           <h3 className="text-lg font-semibold mb-2 capitalize">{meal}</h3>
-          {foodLog.filter(entry => entry.meal_type === meal).map((entry) => (
-            <div key={entry.id} className="mb-2">
-              <p>{entry.food_menu.title}</p>
-              <p className="text-sm">{entry.calories} kcal</p>
-            </div>
-          ))}
+          {foodLog.filter(entry => entry.meal_type === meal).map(renderFoodEntry)}
           <button 
             className="text-[#008080]"
             onClick={() => handleAddFood(meal)}
@@ -164,7 +184,6 @@ const Dashboard = () => {
 
     </div>
   );
-  
 };
 
 const MacroCircle = ({ label, value, color }) => (
