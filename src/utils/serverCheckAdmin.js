@@ -14,12 +14,12 @@ export async function serverCheckAdminStatus(token) {
 
     const { data, error } = await supabase
       .from('users')
-      .select('is_admin')
+      .select('role')
       .eq('id', user.id)
       .single()
 
     if (error) throw error
-    return data.is_admin
+    return data.role === 'admin'  
   } catch (error) {
     console.error('Error checking admin status:', error)
     return false

@@ -1,4 +1,4 @@
-// src\app\admin\dashboard\page.js
+// app/admin/dashboard/page.js
 'use client'
 
 import { useState, useEffect } from 'react';
@@ -76,9 +76,8 @@ const AdminDashboard = () => {
         <thead className="bg-[#3C4E2A] text-white">
           <tr>
             <th className="p-3 text-left">ID</th>
-            <th className="p-3 text-left">Username</th>
             <th className="p-3 text-left">Email</th>
-            <th className="p-3 text-left">Admin</th>
+            <th className="p-3 text-left">Role</th>
             <th className="p-3 text-left">Actions</th>
           </tr>
         </thead>
@@ -86,9 +85,8 @@ const AdminDashboard = () => {
           {users.map(user => (
             <tr key={user.id} className="border-b">
               <td className="p-3">{user.id}</td>
-              <td className="p-3">{user.username}</td>
               <td className="p-3">{user.email}</td>
-              <td className="p-3">{user.is_admin ? 'Yes' : 'No'}</td>
+              <td className="p-3">{user.role}</td>
               <td className="p-3">
                 <button
                   onClick={() => handleEditUser(user.id)}

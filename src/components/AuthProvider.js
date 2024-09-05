@@ -21,14 +21,14 @@ export function AuthProvider({ children }) {
     try {
       const { data, error } = await supabase
         .from('users')
-        .select('is_admin')
+        .select('role')
         .eq('id', userId)
         .single();
       if (error) throw error;
-      return data.is_admin; // Changed from data.isAdmin to data.is_admin
+      return data.role === 'admin';
     } catch (error) {
       console.error('Error checking admin status:', error)
-      return false
+      return false;
     }
   }, [])
 

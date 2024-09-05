@@ -1,4 +1,4 @@
-// src\app\admin\users\[id]\page.js
+// src/app/admin/users/[id]/page.js
 'use client'
 
 import React, { useState, useEffect } from 'react';
@@ -96,17 +96,19 @@ export default function EditUser({ params }) {
           />
         </div>
         <div className="mb-4">
-          <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="is_admin">
-            Admin Status
+          <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="role">
+            Role
           </label>
           <select
             className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-            id="is_admin"
-            value={user.is_admin}
-            onChange={(e) => setUser({...user, is_admin: e.target.value === 'true'})}
+            id="role"
+            value={user.role}
+            onChange={(e) => setUser({...user, role: e.target.value})}
           >
-            <option value="false">Regular User</option>
-            <option value="true">Admin</option>
+            <option value="user">Regular User</option>
+            <option value="admin">Admin</option>
+            <option value="Seller">Meal Prep Company</option>
+            
           </select>
         </div>
         <div className="flex items-center justify-between">
