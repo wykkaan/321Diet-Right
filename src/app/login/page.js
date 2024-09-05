@@ -1,30 +1,46 @@
 // src\app\login\page.js
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { signIn, supabase } from '@/lib/auth'
+import { useAuth } from '@/components/AuthProvider'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const router = useRouter();
+  const { signIn } = useAuth();
+  const supabase = createClientComponentClient();
+
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        router.push('/dashboard');
+      }
+    };
+
+    checkSession();
+  }, [router, supabase.auth]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     try {
-      const { user } = await signIn(email, password);
+      const { error } = await signIn(email, password);
       
+      if (error) throw error;
+
       // Check if user needs to complete onboarding
-      const { data: profile, error } = await supabase
+      const { data: profile, error: profileError } = await supabase
         .from('users')
         .select('*')
-        .eq('id', user.id)
+        .eq('id', (await supabase.auth.getUser()).data.user.id)
         .single();
 
-      if (error || !profile) {
+      if (profileError || !profile) {
         router.push('/onboarding/begin');
         return;
       }

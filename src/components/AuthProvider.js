@@ -117,65 +117,39 @@ export function AuthProvider({ children }) {
     return null
   }, [authState.token])
 
-  const refreshToken = useCallback(async () => {
-    const { data, error } = await supabase.auth.refreshSession()
-    if (error) {
-      console.error('Error refreshing token:', error)
-      return null
-    }
-    if (data.session) {
-      setAuthState(prev => ({ ...prev, token: data.session.access_token }))
-      return data.session.access_token
-    }
-    return null
-  }, [])
-
-  const setUser = useCallback((user) => {
-    setAuthState(prev => ({ ...prev, user }))
-  }, [])
-
-  const setIsProfileComplete = useCallback((isComplete) => {
-    setAuthState(prev => ({ ...prev, isProfileComplete: isComplete }))
-  }, [])
-
-  const signIn = useCallback(async (email, password) => {
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-      if (error) throw error
-
-      const isAdmin = await checkAdminStatus(data.user.id)
-      setAuthState(prev => ({ 
-        ...prev, 
-        user: data.user, 
-        token: data.session.access_token, 
-        isAdmin, 
-        loading: false 
-      }))
-
-      if (isAdmin) {
-        router.push('/admin/dashboard')
-      } else {
-        router.push('/dashboard')
-      }
-
-      return { user: data.user, isAdmin }
-    } catch (error) {
-      console.error('Sign in error:', error)
-      return { error }
-    }
-  }, [checkAdminStatus, router])
-
   const value = useMemo(() => ({
     user: authState.user,
-    setUser,
     loading: authState.loading,
     isProfileComplete: authState.isProfileComplete,
     isAdmin: authState.isAdmin,
-    setIsProfileComplete,
     getToken,
-    refreshToken,
-    signIn
-  }), [authState, setUser, setIsProfileComplete, getToken, refreshToken, signIn])
+    signIn: async (email, password) => {
+      try {
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+        if (error) throw error
+
+        const isAdmin = await checkAdminStatus(data.user.id)
+        setAuthState(prev => ({ 
+          ...prev, 
+          user: data.user, 
+          token: data.session.access_token, 
+          isAdmin, 
+          loading: false 
+        }))
+
+        if (isAdmin) {
+          router.push('/admin/dashboard')
+        } else {
+          router.push('/dashboard')
+        }
+
+        return { user: data.user, isAdmin }
+      } catch (error) {
+        console.error('Sign in error:', error)
+        return { error }
+      }
+    },
+  }), [authState, getToken, router, checkAdminStatus])
 
   return (
     <AuthContext.Provider value={value}>
