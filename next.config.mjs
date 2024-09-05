@@ -1,6 +1,9 @@
 import withPWA from 'next-pwa';
 
 const nextConfig = {
+  images: {
+    domains: ['ywevkpnljnlzknydqyld.supabase.co'],
+  },
 };
 
 const pwaConfig = withPWA({
