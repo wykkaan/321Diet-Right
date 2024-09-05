@@ -10,6 +10,33 @@ import Link from 'next/link';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
 
+const SubscriptionDetails = ({ onConfirm, onCancel }) => {
+  return (
+    <div className="bg-white p-6 rounded-lg shadow-md">
+      <h2 className="text-2xl font-bold mb-4">Premium Subscription</h2>
+      <p className="mb-4">Unlock all premium features for just $10.00 SGD per month!</p>
+      <ul className="list-disc list-inside mb-6">
+        <li>Access to Meal Assistant</li>
+        <li>Image Recognition for easy food logging</li>
+      </ul>
+      <div className="flex justify-between">
+        <button 
+          onClick={onCancel}
+          className="bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400 transition-colors"
+        >
+          Cancel
+        </button>
+        <button 
+          onClick={onConfirm}
+          className="bg-[#008080] text-white px-4 py-2 rounded hover:bg-[#006666] transition-colors"
+        >
+          Subscribe for $10.00 SGD/month
+        </button>
+      </div>
+    </div>
+  );
+};
+
 const CheckoutForm = ({ onSubscriptionComplete }) => {
   const stripe = useStripe();
   const elements = useElements();
@@ -60,13 +87,16 @@ const CheckoutForm = ({ onSubscriptionComplete }) => {
   };
 
   return (
-    <form onSubmit={handleSubmit}>
-      <CardElement />
-      {error && <div className="text-red-500 mt-2">{error}</div>}
+    <form onSubmit={handleSubmit} className="bg-white p-6 rounded-lg shadow-md">
+      <h2 className="text-2xl font-bold mb-4">Enter Payment Details</h2>
+      <div className="mb-4">
+        <CardElement className="p-3 border rounded" />
+      </div>
+      {error && <div className="text-red-500 mb-4">{error}</div>}
       <button 
         type="submit" 
         disabled={!stripe || processing}
-        className="w-full bg-[#008080] text-white py-3 rounded-lg font-semibold mt-4"
+        className="w-full bg-[#008080] text-white py-2 rounded-lg font-semibold hover:bg-[#006666] transition-colors"
       >
         {processing ? 'Processing...' : 'Subscribe Now'}
       </button>
@@ -74,14 +104,15 @@ const CheckoutForm = ({ onSubscriptionComplete }) => {
   );
 };
 
+
 const Dashboard = () => {
   const [userData, setUserData] = useState(null);
   const [foodLog, setFoodLog] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentWeight, setCurrentWeight] = useState(null);
+  const [subscriptionStep, setSubscriptionStep] = useState('initial'); 
   const [isPremium, setIsPremium] = useState(false);
-  const [showSubscribeForm, setShowSubscribeForm] = useState(false);
   const router = useRouter();
   const { user, loading: authLoading, getToken } = useAuth();
 
@@ -113,9 +144,27 @@ const Dashboard = () => {
     }
   };
 
-  const handleSubscriptionComplete = () => {
-    setShowSubscribeForm(false);
-    checkSubscriptionStatus();
+  const handleGoPremium = () => {
+    setSubscriptionStep('details');
+  };
+
+  const handleConfirmSubscription = () => {
+    setSubscriptionStep('payment');
+  };
+
+  const handleCancelSubscription = () => {
+    setSubscriptionStep('initial');
+  };
+
+  const handleSubscriptionComplete = async () => {
+    setIsPremium(true);
+    setSubscriptionStep('initial');
+    try {
+      await fetchUserData();
+      await fetchFoodLog();
+    } catch (err) {
+      console.error('Error refreshing user data after subscription:', err);
+    }
   };
 
   const renderFoodEntry = (entry) => {
@@ -257,8 +306,8 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Premium Features or Go Premium Button */}
-      {isPremium ? (
+  {/* Premium Features or Subscription Process */}
+  {isPremium ? (
         <div className="mb-4">
           <h2 className="text-xl font-bold mb-2">Premium Features</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -274,17 +323,24 @@ const Dashboard = () => {
         </div>
       ) : (
         <div className="mb-4">
-          {showSubscribeForm ? (
-            <Elements stripe={stripePromise}>
-              <CheckoutForm onSubscriptionComplete={handleSubscriptionComplete} />
-            </Elements>
-          ) : (
+          {subscriptionStep === 'initial' && (
             <button 
-              onClick={() => setShowSubscribeForm(true)}
-              className="w-full bg-[#008080] text-white py-3 rounded-lg font-semibold"
+              onClick={handleGoPremium}
+              className="w-full bg-[#008080] text-white py-3 rounded-lg font-semibold hover:bg-[#006666] transition-colors"
             >
               GO PREMIUM
             </button>
+          )}
+          {subscriptionStep === 'details' && (
+            <SubscriptionDetails 
+              onConfirm={handleConfirmSubscription}
+              onCancel={handleCancelSubscription}
+            />
+          )}
+          {subscriptionStep === 'payment' && (
+            <Elements stripe={stripePromise}>
+              <CheckoutForm onSubscriptionComplete={handleSubscriptionComplete} />
+            </Elements>
           )}
         </div>
       )}

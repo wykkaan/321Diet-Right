@@ -1,13 +1,12 @@
 // src/components/MealAssistant.js
-'use client'
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ChatGroq } from '@langchain/groq';
 import { ChatPromptTemplate, HumanMessagePromptTemplate, SystemMessagePromptTemplate } from '@langchain/core/prompts';
-import { ToolMessage } from "@langchain/core/messages";
+import { useAuth } from '@/components/AuthProvider';
 import {
   FindRecipesByIngredientsTool,
   ComplexRecipeSearchTool,
+  HalalRecipeSearchTool,
   GetRecipeInformationTool,
   GetRecipeInstructionsTool,
   GoogleSearchTool
@@ -16,23 +15,50 @@ import {
 export default function MealAssistant() {
   const [userInput, setUserInput] = useState('');
   const [chatHistory, setChatHistory] = useState([]);
-  const [caloriesLeft, setCaloriesLeft] = useState('');
   const [loading, setLoading] = useState(false);
   const [isChatStarted, setIsChatStarted] = useState(false);
-  const [dietaryPreference, setDietaryPreference] = useState('');
+  const [userData, setUserData] = useState(null);
+  const { getToken } = useAuth();
 
-  const handleCaloriesSubmit = (e) => {
-    e.preventDefault();
-    if (caloriesLeft) {
+  useEffect(() => {
+    fetchUserData();
+  }, []);
+
+  const fetchUserData = async () => {
+    try {
+      const token = await getToken();
+      const response = await fetch('/api/user-data', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setUserData(data);
+      } else {
+        console.error('Failed to fetch user data');
+      }
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+    }
+  };
+
+  const handleStartPlanning = () => {
+    if (userData) {
       setIsChatStarted(true);
-      setChatHistory([{ role: 'assistant', content: `Great! You have ${caloriesLeft} calories left for the day. How can I help you with meal planning?` }]);
+      setChatHistory([
+        { 
+          role: 'assistant', 
+          content: `Great! Your target calorie intake is ${userData.target_calories} calories per day. How can I help you with meal planning?` 
+        }
+      ]);
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!userInput.trim()) return;
-  
+
     setLoading(true);
     setChatHistory(prev => [...prev, { role: 'user', content: userInput }]);
 
@@ -54,6 +80,7 @@ export default function MealAssistant() {
       const tools = [
         FindRecipesByIngredientsTool,
         ComplexRecipeSearchTool,
+        HalalRecipeSearchTool,
         GetRecipeInformationTool,
         GetRecipeInstructionsTool,
         GoogleSearchTool
@@ -175,59 +202,62 @@ export default function MealAssistant() {
   }
 };
   
-  
+if (!userData) {
+  return <div>Loading user data...</div>;
+}
 
-  return (
-    <div className="bg-white rounded-lg shadow-md p-6">
-      {!isChatStarted ? (
-        <form onSubmit={handleCaloriesSubmit} className="mb-4">
-          <label htmlFor="calories" className="block mb-2 font-semibold">Enter your remaining calories for the day:</label>
+return (
+  <div className="flex flex-col h-full">
+    {!isChatStarted ? (
+      <div className="mb-4">
+        <h2 className="text-xl mb-2">Your Profile</h2>
+        <p>Target Calories: {userData.target_calories} per day</p>
+        <p>Goal: {userData.goal}</p>
+        <p>Age: {userData.age}</p>
+        <p>Gender: {userData.gender}</p>
+        <p>Height: {userData.height}cm</p>
+        <p>Weight: {userData.weight}kg</p>
+        <button 
+          onClick={handleStartPlanning} 
+          className="mt-4 w-full bg-[#3C4E2A] text-[#F5E9D4] px-4 py-2 rounded"
+        >
+          Start Meal Planning
+        </button>
+      </div>
+    ) : (
+      <>
+        <div className="flex-grow overflow-y-auto mb-4 p-4 bg-gray-100 rounded">
+          {chatHistory.map((msg, index) => (
+            <div key={index} className={`mb-2 ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
+              <span className={`inline-block p-2 rounded ${msg.role === 'user' ? 'bg-blue-500 text-white' : 'bg-white'}`}>
+                {msg.content}
+              </span>
+            </div>
+          ))}
+          {loading && <div className="text-center">Thinking...</div>}
+        </div>
+        <form onSubmit={handleSubmit} className="flex mb-2">
           <input
-            type="number"
-            id="calories"
-            value={caloriesLeft}
-            onChange={(e) => setCaloriesLeft(e.target.value)}
-            className="w-full p-2 border border-gray-300 rounded mb-4"
-            required
+            type="text"
+            value={userInput}
+            onChange={(e) => setUserInput(e.target.value)}
+            placeholder="Ask about meals or recipes..."
+            className="flex-grow p-2 border border-gray-300 rounded-l"
+            disabled={loading}
           />
-          <button type="submit" className="w-full bg-[#3C4E2A] text-[#F5E9D4] px-4 py-2 rounded hover:bg-[#2A3E1A] transition-colors">
-            Start Meal Planning
+          <button
+            type="submit"
+            className="bg-[#3C4E2A] text-[#F5E9D4] px-4 py-2 rounded-r"
+            disabled={loading}
+          >
+            Send
           </button>
         </form>
-      ) : (
-        <>
-          <div className="h-96 mb-4 p-4 bg-gray-100 rounded overflow-y-auto">
-            {chatHistory.map((msg, index) => (
-              <div key={index} className={`mb-2 ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
-                <span className={`inline-block p-2 rounded-lg ${msg.role === 'user' ? 'bg-[#3C4E2A] text-[#F5E9D4]' : 'bg-white border border-gray-300'}`}>
-                  {msg.content}
-                </span>
-              </div>
-            ))}
-            {loading && <div className="text-center text-gray-500">Thinking...</div>}
-          </div>
-          <form onSubmit={handleSubmit} className="flex mb-4">
-            <input
-              type="text"
-              value={userInput}
-              onChange={(e) => setUserInput(e.target.value)}
-              placeholder="Ask about meals or recipes..."
-              className="flex-grow p-2 border border-gray-300 rounded-l"
-              disabled={loading}
-            />
-            <button
-              type="submit"
-              className="bg-[#3C4E2A] text-[#F5E9D4] px-4 py-2 rounded-r hover:bg-[#2A3E1A] transition-colors"
-              disabled={loading}
-            >
-              Send
-            </button>
-          </form>
-          <div className="text-sm text-gray-600">
-            Calories left for today: <span className="font-semibold">{caloriesLeft}</span>
-          </div>
-        </>
-      )}
-    </div>
-  );
+        <div className="text-sm text-gray-600">
+          Target Calories: {userData.target_calories} per day
+        </div>
+      </>
+    )}
+  </div>
+);
 }
