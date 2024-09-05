@@ -1,10 +1,10 @@
-'use client'
+'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/components/AuthProvider';
 
-export default function SuccessPage() {
+function SuccessContent() {
   const [session, setSession] = useState(null);
   const [error, setError] = useState(null);
   const router = useRouter();
@@ -61,5 +61,13 @@ export default function SuccessPage() {
         Continue Shopping
       </button>
     </div>
+  );
+}
+
+export default function SuccessPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <SuccessContent />
+    </Suspense>
   );
 }
