@@ -125,28 +125,35 @@ export function AuthProvider({ children }) {
     getToken,
     signIn: async (email, password) => {
       try {
-        const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-        if (error) throw error
-
-        const isAdmin = await checkAdminStatus(data.user.id)
-        setAuthState(prev => ({ 
-          ...prev, 
-          user: data.user, 
-          token: data.session.access_token, 
-          isAdmin, 
-          loading: false 
-        }))
-
-        if (isAdmin) {
-          router.push('/admin/dashboard')
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+    
+        const { user } = data;
+    
+        if (!user.email_confirmed_at) {
+          router.push('/email-confirmation-pending');
         } else {
-          router.push('/dashboard')
+          // Your existing logic for confirmed users
+          const isAdmin = await checkAdminStatus(user.id);
+          setAuthState(prev => ({ 
+            ...prev, 
+            user: user, 
+            token: data.session.access_token, 
+            isAdmin, 
+            loading: false 
+          }));
+    
+          if (isAdmin) {
+            router.push('/admin/dashboard');
+          } else {
+            router.push('/dashboard');
+          }
         }
-
-        return { user: data.user, isAdmin }
+    
+        return { user, isAdmin: user.email_confirmed_at ? await checkAdminStatus(user.id) : false };
       } catch (error) {
-        console.error('Sign in error:', error)
-        return { error }
+        console.error('Sign in error:', error);
+        return { error };
       }
     },
   }), [authState, getToken, router, checkAdminStatus])

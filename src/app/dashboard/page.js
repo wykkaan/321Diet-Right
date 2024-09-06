@@ -7,6 +7,9 @@ import { useAuth } from '@/components/AuthProvider';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import Link from 'next/link';
+import Calendar from 'react-calendar';
+import 'react-calendar/dist/Calendar.css';
+
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
 
@@ -113,16 +116,18 @@ const Dashboard = () => {
   const [currentWeight, setCurrentWeight] = useState(null);
   const [subscriptionStep, setSubscriptionStep] = useState('initial'); 
   const [isPremium, setIsPremium] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [showFullCalendar, setShowFullCalendar] = useState(false);
   const router = useRouter();
   const { user, loading: authLoading, getToken } = useAuth();
 
   useEffect(() => {
     if (!authLoading && user) {
       fetchUserData();
-      fetchFoodLog();
+      fetchFoodLog(selectedDate);
       checkSubscriptionStatus();
     }
-  }, [user, authLoading]);
+  }, [user, authLoading, selectedDate]);
 
   const checkSubscriptionStatus = async () => {
     try {
@@ -211,11 +216,11 @@ const Dashboard = () => {
     }
   };
 
-  const fetchFoodLog = async () => {
+  const fetchFoodLog = async (date) => {
     try {
       const token = await getToken();
-      const today = new Date().toISOString().split('T')[0];
-      const response = await fetch(`/api/user-food-log?date=${today}`, {
+      const formattedDate = date.toISOString().split('T')[0];
+      const response = await fetch(`/api/user-food-log?date=${formattedDate}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -245,6 +250,11 @@ const Dashboard = () => {
     }, { calories: 0, protein: 0, fat: 0, carbs: 0 });
   };
 
+  const handleDateChange = (date) => {
+    setSelectedDate(date);
+    setShowFullCalendar(false);
+  };
+
   const updateWeight = async (newWeight) => {
     try {
       const token = await getToken();
@@ -256,8 +266,14 @@ const Dashboard = () => {
         },
         body: JSON.stringify({ weight: newWeight }),
       });
-
-      if (!response.ok) throw new Error('Failed to update weight');
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to update weight');
+      }
+      
+      const data = await response.json();
+      console.log(data.message); // Log success message
       setCurrentWeight(newWeight);
     } catch (err) {
       console.error('Error updating weight:', err);
@@ -275,7 +291,24 @@ const Dashboard = () => {
   return (
     <div className="font-sans bg-[#F5E9D4] text-[#3C4E2A] min-h-screen flex flex-col p-4">
       <h1 className="text-2xl font-bold text-center mb-2">DIET RIGHT</h1>
-      <p className="text-center mb-4">&lt; Today &gt;</p>
+      
+      <div className="relative mb-4 flex justify-center">
+        <button 
+          onClick={() => setShowFullCalendar(!showFullCalendar)}
+          className="text-lg font-semibold"
+        >
+          {selectedDate.toDateString()}
+        </button>
+        {showFullCalendar && (
+          <div className="absolute top-full left-1/2 transform -translate-x-1/2 z-10">
+            <Calendar
+              onChange={handleDateChange}
+              value={selectedDate}
+              className="bg-white rounded-lg shadow-md p-2"
+            />
+          </div>
+        )}
+      </div>
 
 
       {/* Calories */}

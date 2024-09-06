@@ -20,17 +20,16 @@ export async function POST(req) {
 
     if (userError) throw userError;
 
-    const { weight } = await req.json();
-    const { data, error } = await supabase
-      .from('users')
-      .update({ weight })
-      .eq('id', user.id);
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email: user.email,
+    });
 
     if (error) throw error;
 
-    return NextResponse.json({ message: 'Weight updated successfully' }, { status: 200 });
+    return NextResponse.json({ message: 'Confirmation email resent successfully' }, { status: 200 });
   } catch (error) {
-    console.error('Error updating weight:', error);
-    return NextResponse.json({ message: 'Failed to update weight' }, { status: 500 });
+    console.error('Error resending confirmation email:', error);
+    return NextResponse.json({ message: 'Failed to resend confirmation email' }, { status: 500 });
   }
 }

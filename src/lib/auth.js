@@ -10,7 +10,8 @@ export async function signUp(email, password, username) {
     email,
     password,
     options: {
-      data: { username }
+      data: { username },
+      emailRedirectTo: `${window.location.origin}/email-confirmation-pending`
     }
   })
   if (error) throw error
@@ -43,6 +44,22 @@ export async function getUserSession() {
 
 export async function resetPassword(email) {
   const { data, error } = await supabase.auth.resetPasswordForEmail(email)
+  if (error) throw error
+  return data
+}
+
+export async function checkEmailConfirmation() {
+  const { data: { user } } = await supabase.auth.getUser()
+  return user?.email_confirmed_at !== null
+}
+
+export async function resendConfirmationEmail() {
+  const { data, error } = await supabase.auth.resend({
+    type: 'signup',
+    options: {
+      emailRedirectTo: `${window.location.origin}/email-confirmation-pending`
+    }
+  })
   if (error) throw error
   return data
 }

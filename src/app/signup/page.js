@@ -1,4 +1,3 @@
-// src\app\signup\page.js
 'use client'
 
 import { useState } from 'react';
@@ -24,7 +23,7 @@ const SignUpPage = () => {
 
         try {
             await signUp(email, password, username);
-            router.push('/onboarding/begin');
+            router.push('/email-confirmation-pending');
         } catch (error) {
             setError(error.message);
         }
