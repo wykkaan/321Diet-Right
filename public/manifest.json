@@ -20,7 +20,7 @@
   "custom_tabs": {
     "enabled": true,
     "url_patterns": [
-      "https://check.stripe.com/*"
+      "https://checkout.stripe.com/*"
     ]
   }
 }
