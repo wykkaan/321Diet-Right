@@ -19,6 +19,7 @@ export default function MealAssistant() {
   const [isChatStarted, setIsChatStarted] = useState(false);
   const [userData, setUserData] = useState(null);
   const { getToken } = useAuth();
+  const [dietaryPreference, setDietaryPreference] = useState('');
 
   useEffect(() => {
     fetchUserData();
