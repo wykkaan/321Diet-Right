@@ -13,6 +13,7 @@ const ProfilePage = () => {
     gender: '',
     dob: '',
   });
+  const [editableData, setEditableData] = useState({});
   const [isEditing, setIsEditing] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
@@ -34,6 +35,7 @@ const ProfilePage = () => {
       if (response.ok) {
         const data = await response.json();
         setUserData(data);
+        setEditableData(data);
       } else {
         console.error('Failed to fetch user data');
       }
@@ -44,7 +46,7 @@ const ProfilePage = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setUserData(prev => ({ ...prev, [name]: value }));
+    setEditableData(prev => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e) => {
@@ -57,9 +59,10 @@ const ProfilePage = () => {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(userData),
+        body: JSON.stringify(editableData),
       });
       if (response.ok) {
+        setUserData(editableData);
         setIsEditing(false);
       } else {
         console.error('Failed to update user data');
@@ -67,6 +70,16 @@ const ProfilePage = () => {
     } catch (error) {
       console.error('Error updating user data:', error);
     }
+  };
+
+  const handleEdit = () => {
+    setEditableData(userData);
+    setIsEditing(true);
+  };
+
+  const handleCancelEdit = () => {
+    setEditableData(userData);
+    setIsEditing(false);
   };
 
   const handlePasswordChange = async () => {
@@ -122,7 +135,7 @@ const ProfilePage = () => {
       </div>
 
       <form onSubmit={handleSubmit}>
-        {Object.entries(userData).map(([key, value]) => (
+        {Object.entries(isEditing ? editableData : userData).map(([key, value]) => (
           <div key={key} className="mb-4">
             <label className="block text-sm font-bold mb-2" htmlFor={key}>
               {key.charAt(0).toUpperCase() + key.slice(1)}
@@ -139,11 +152,16 @@ const ProfilePage = () => {
           </div>
         ))}
         {isEditing ? (
-          <button type="submit" className="w-full bg-[#3C4E2A] text-[#F5E9D4] py-2 rounded-lg font-semibold mb-4">
-            Save Changes
-          </button>
+          <div className="flex justify-between">
+            <button type="submit" className="bg-[#3C4E2A] text-[#F5E9D4] py-2 px-4 rounded-lg font-semibold">
+              Save Changes
+            </button>
+            <button type="button" onClick={handleCancelEdit} className="bg-red-500 text-white py-2 px-4 rounded-lg font-semibold">
+              Cancel
+            </button>
+          </div>
         ) : (
-          <button type="button" onClick={() => setIsEditing(true)} className="w-full bg-[#3C4E2A] text-[#F5E9D4] py-2 rounded-lg font-semibold mb-4">
+          <button type="button" onClick={handleEdit} className="w-full bg-[#3C4E2A] text-[#F5E9D4] py-2 rounded-lg font-semibold mb-4">
             Edit Profile
           </button>
         )}
