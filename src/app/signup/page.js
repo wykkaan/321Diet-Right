@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { signUp } from '@/lib/auth';
+import Link from 'next/link';
 
 const SignUpPage = () => {
     const [email, setEmail] = useState('');
@@ -32,6 +33,7 @@ const SignUpPage = () => {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-[#F5E9D4] text-[#3C4E2A] p-4">
         <main className="w-full max-w-md">
+          <Link href="/" className="block mb-4 text-[#3C4E2A] hover:underline">← Back to Home</Link>
           <h1 className="text-4xl font-bold mb-8 text-center drop-shadow-md">Create Account</h1>
           
           <form onSubmit={handleSubmit} className="bg-[#3C4E2A] rounded-3xl p-8 shadow-lg">

@@ -18,6 +18,7 @@ export default function MealAssistant() {
   const [loading, setLoading] = useState(false);
   const [isChatStarted, setIsChatStarted] = useState(false);
   const [userData, setUserData] = useState(null);
+  const [remainingCalories, setRemainingCalories] = useState(null);
   const { getToken } = useAuth();
   const [dietaryPreference, setDietaryPreference] = useState('');
 
@@ -28,29 +29,43 @@ export default function MealAssistant() {
   const fetchUserData = async () => {
     try {
       const token = await getToken();
-      const response = await fetch('/api/user-data', {
+      const userResponse = await fetch('/api/user-data', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
-      if (response.ok) {
-        const data = await response.json();
-        setUserData(data);
-      } else {
-        console.error('Failed to fetch user data');
-      }
+      if (!userResponse.ok) throw new Error('Failed to fetch user data');
+      const userData = await userResponse.json();
+
+      // Fetch food log for today
+      const today = new Date().toISOString().split('T')[0];
+      const foodLogResponse = await fetch(`/api/user-food-log?date=${today}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (!foodLogResponse.ok) throw new Error('Failed to fetch food log');
+      const foodLog = await foodLogResponse.json();
+
+      // Calculate consumed calories
+      const consumedCalories = foodLog.reduce((total, entry) => total + entry.calories, 0);
+      const remaining = userData.target_calories - consumedCalories;
+
+      setUserData(userData);
+      setRemainingCalories(Math.max(remaining, 0)); // Ensure remaining calories is not negative
+      setDietaryPreference(userData.dietary_preferences || '');
     } catch (error) {
       console.error('Error fetching user data:', error);
     }
   };
 
   const handleStartPlanning = () => {
-    if (userData) {
+    if (userData && remainingCalories !== null) {
       setIsChatStarted(true);
       setChatHistory([
         { 
           role: 'assistant', 
-          content: `Great! Your target calorie intake is ${userData.target_calories} calories per day. How can I help you with meal planning?` 
+          content: `Great! You have ${remainingCalories} calories remaining for today. How can I help you with meal planning?` 
         }
       ]);
     }
@@ -88,7 +103,7 @@ export default function MealAssistant() {
       ];
 
       const systemPrompt = `
-        You are a helpful meal planning assistant. The user has ${userData.target_calories} calories left for the day and their dietary preference is ${dietaryPreference}. 
+        You are a helpful meal planning assistant. The user has ${remainingCalories} calories left for the day and their dietary preference is ${dietaryPreference}. 
         Always consider their dietary preference in your recommendations.
 
         Follow these steps:
@@ -212,7 +227,7 @@ return (
     {!isChatStarted ? (
       <div className="mb-4">
         <h2 className="text-xl mb-2">Your Profile</h2>
-        <p>Target Calories: {userData.target_calories} per day</p>
+        <p>Calories left: {remainingCalories}</p>
         <p>Goal: {userData.goal}</p>
         <p>Age: {userData.age}</p>
         <p>Gender: {userData.gender}</p>

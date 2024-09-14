@@ -88,7 +88,7 @@ const AddFoodPage = ({ params }) => {
         router.back();
       }
     };
-  
+
     const handleAddFood = async () => {
       if (!user || !selectedFood) return;
   
@@ -251,7 +251,7 @@ const AddFoodPage = ({ params }) => {
         </>
       )}
 
-      {activeTab === 'recipes' && (
+     {activeTab === 'recipes' && (
         <>
           {userRecipes.length === 0 && !loading && (
             <div className="text-center mt-8">
@@ -262,16 +262,24 @@ const AddFoodPage = ({ params }) => {
 
           {userRecipes.filter(recipe => 
             recipe.name.toLowerCase().includes(searchQuery.toLowerCase())
-          ).map((recipe) => (
-            <div 
-              key={recipe.id} 
-              className="mb-2 p-2 bg-white rounded cursor-pointer"
-              onClick={() => handleRecipeSelect(recipe)}
-            >
-              <h3 className="font-bold">{recipe.name}</h3>
-              <p>Calories: {recipe.calories} | Protein: {recipe.protein}g | Fat: {recipe.fat}g | Carbs: {recipe.carbohydrates}g</p>
-            </div>
-          ))}
+          ).map((recipe) => {
+            const totalNutrition = calculateTotalNutrition(recipe);
+            return (
+              <div 
+                key={recipe.id} 
+                className="mb-2 p-2 bg-white rounded cursor-pointer"
+                onClick={() => handleRecipeSelect(recipe)}
+              >
+                <h3 className="font-bold">{recipe.name}</h3>
+                <p>
+                  Calories: {Math.round(totalNutrition.calories)} | 
+                  Protein: {totalNutrition.protein.toFixed(1)}g | 
+                  Fat: {totalNutrition.fat.toFixed(1)}g | 
+                  Carbs: {totalNutrition.carbohydrates.toFixed(1)}g
+                </p>
+              </div>
+            );
+          })}
 
             {selectedRecipe && (
               <div className="bg-white p-4 rounded mt-4">
@@ -293,16 +301,16 @@ const AddFoodPage = ({ params }) => {
                   <p>{selectedRecipe.instructions}</p>
                 </div>
                 {(() => {
-                  const totalNutrition = calculateTotalNutrition(selectedRecipe);
-                  return (
-                    <div className="mb-4">
-                      <p>Total Calories: {Math.round(totalNutrition.calories * servingSize)}</p>
-                      <p>Total Protein: {(totalNutrition.protein * servingSize).toFixed(2)}g</p>
-                      <p>Total Fat: {(totalNutrition.fat * servingSize).toFixed(2)}g</p>
-                      <p>Total Carbs: {(totalNutrition.carbohydrates * servingSize).toFixed(2)}g</p>
-                    </div>
-                  );
-                })()}
+                const totalNutrition = calculateTotalNutrition(selectedRecipe);
+                return (
+                  <div className="mb-4">
+                    <p>Total Calories: {Math.round(totalNutrition.calories * servingSize)}</p>
+                    <p>Total Protein: {(totalNutrition.protein * servingSize).toFixed(1)}g</p>
+                    <p>Total Fat: {(totalNutrition.fat * servingSize).toFixed(1)}g</p>
+                    <p>Total Carbs: {(totalNutrition.carbohydrates * servingSize).toFixed(1)}g</p>
+                  </div>
+                );
+              })()}
                 <div className="mb-4">
                   <label htmlFor="recipe-serving-size" className="block mb-2">Serving Size:</label>
                   <input

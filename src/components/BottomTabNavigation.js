@@ -1,14 +1,22 @@
 'use client'
 
-import { useState, useMemo, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useMemo, useCallback, useEffect } from 'react'
+import { useRouter, usePathname } from 'next/navigation'
 import { useAuth } from './AuthProvider'
 import { signOut } from '@/lib/auth'
 
 const BottomTabNavigation = () => {
   const [activeTab, setActiveTab] = useState('dashboard')
   const router = useRouter()
-  const { setUser } = useAuth()
+  const pathname = usePathname()
+  const { user, setUser } = useAuth()
+
+  useEffect(() => {
+    const path = pathname.split('/')[1]
+    if (['dashboard', 'shop', 'more'].includes(path)) {
+      setActiveTab(path)
+    }
+  }, [pathname])
 
   const handleTabClick = useCallback((tab) => {
     setActiveTab(tab)
@@ -16,10 +24,16 @@ const BottomTabNavigation = () => {
   }, [router])
 
   const handleSignOut = useCallback(async () => {
-    await signOut()
-    localStorage.clear()
-    router.push('/login')
-  }, [router])
+    try {
+      await signOut()
+      setUser(null)
+      localStorage.clear()
+      router.push('/login')
+    } catch (error) {
+      console.error('Error signing out:', error)
+      // Optionally, show an error message to the user
+    }
+  }, [router, setUser])
 
   const tabIcons = useMemo(() => ({
     dashboard: (
@@ -53,6 +67,8 @@ const BottomTabNavigation = () => {
       <span className="text-xs">{label}</span>
     </button>
   ), [activeTab, handleTabClick, tabIcons])
+
+  if (!user) return null
 
   return (
     <div className="fixed bottom-0 left-0 right-0 bg-[#3C4E2A] text-[#F5E9D4] flex justify-around items-center h-16">

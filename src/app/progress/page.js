@@ -54,8 +54,8 @@ const ProgressPage = () => {
 
         const data = await response.json();
         
-        // Interpolate weight data
-        data.weightData = interpolateWeightData(data.weightData);
+        // Fill in missing weight data
+        data.weightData = fillMissingWeightData(data.weightData);
         
         // Calculate BMI data
         data.bmiData = calculateBMIData(data.weightData, data.height);
@@ -72,41 +72,30 @@ const ProgressPage = () => {
     fetchUserData();
   }, [router]);
 
-  const interpolateWeightData = (weightData) => {
-    const interpolatedData = [];
+  const fillMissingWeightData = (weightData) => {
+    const filledData = [];
     let lastKnownWeight = null;
-    let lastKnownDate = null;
+    const today = new Date();
+    const thirtyDaysAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-    weightData.forEach((entry, index) => {
-      const currentDate = new Date(entry.date);
-      
-      if (entry.weight !== null) {
-        // If we have a weight entry, use it
-        interpolatedData.push(entry);
-        lastKnownWeight = entry.weight;
-        lastKnownDate = currentDate;
-      } else if (lastKnownWeight !== null) {
-        // If we don't have a weight entry, but we have a previous known weight
-        let nextKnownEntry = weightData.slice(index + 1).find(e => e.weight !== null);
-        
-        if (nextKnownEntry) {
-          const nextKnownDate = new Date(nextKnownEntry.date);
-          const totalDays = (nextKnownDate - lastKnownDate) / (1000 * 60 * 60 * 24);
-          const daysFromLast = (currentDate - lastKnownDate) / (1000 * 60 * 60 * 24);
-          const interpolatedWeight = lastKnownWeight + (nextKnownEntry.weight - lastKnownWeight) * (daysFromLast / totalDays);
-          
-          interpolatedData.push({...entry, weight: parseFloat(interpolatedWeight.toFixed(1))});
-        } else {
-          // If there's no next known weight, just use the last known weight
-          interpolatedData.push({...entry, weight: lastKnownWeight});
+    for (let d = new Date(thirtyDaysAgo); d <= today; d.setDate(d.getDate() + 1)) {
+      const currentDate = d.toISOString().split('T')[0];
+      const existingEntry = weightData.find(entry => entry.date === currentDate);
+
+      if (existingEntry) {
+        filledData.push(existingEntry);
+        if (existingEntry.weight !== null) {
+          lastKnownWeight = existingEntry.weight;
         }
       } else {
-        // If we don't have any known weight yet, just push the entry as is
-        interpolatedData.push(entry);
+        filledData.push({
+          date: currentDate,
+          weight: lastKnownWeight
+        });
       }
-    });
+    }
 
-    return interpolatedData;
+    return filledData;
   };
 
   const calculateBMIData = (weightData, height) => {
@@ -200,11 +189,20 @@ const ProgressPage = () => {
               <YAxis domain={['dataMin - 1', 'dataMax + 1']} stroke={colors.text} />
               <Tooltip content={<CustomTooltip />} />
               <Legend />
-              <Line type="monotone" dataKey="weight" stroke={colors.chart.weight} name="Weight" strokeWidth={2} dot={true} />
+              <Line 
+                type="monotone" 
+                dataKey="weight" 
+                stroke={colors.chart.weight} 
+                name="Weight" 
+                strokeWidth={2} 
+                dot={{ r: 3 }} 
+                connectNulls={true}
+              />
             </LineChart>
           </ResponsiveContainer>
         </div>
       </div>
+
 
       <div className="mb-4">
         <h2 className="text-xl mb-2">31 Day Outlook (BMI graph)</h2>
