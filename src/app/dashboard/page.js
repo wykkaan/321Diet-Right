@@ -362,7 +362,7 @@ const Dashboard = () => {
         </div>
         {isExceedingCalories && (
           <p className="text-red-500 text-sm mt-1">
-            You've exceeded your daily calorie goal by {Math.abs(remainingCalories)} kcal
+            You have exceeded your daily calorie goal by {Math.abs(remainingCalories)} kcal
           </p>
         )}
       </div>
