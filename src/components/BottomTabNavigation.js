@@ -31,7 +31,7 @@ const BottomTabNavigation = () => {
       router.push('/login')
     } catch (error) {
       console.error('Error signing out:', error)
-      // Optionally, show an error message to the user
+      alert('There was an error signing out. Please try again.')
     }
   }, [router, setUser])
 
