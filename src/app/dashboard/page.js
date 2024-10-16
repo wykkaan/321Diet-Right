@@ -173,29 +173,53 @@ const Dashboard = () => {
   };
 
   const renderFoodEntry = (entry) => {
+    const totalCalories = entry.calories * entry.serving_size;
     if (entry.food_menu) {
       return (
         <div key={entry.id} className="mb-2">
           <p>{entry.food_menu.title}</p>
-          <p className="text-sm">{entry.calories} kcal</p>
+          <p className="text-sm">
+            {totalCalories} kcal 
+            {entry.serving_size !== 1 && ` (${entry.serving_size} servings)`}
+          </p>
         </div>
       );
     } else if (entry.recipes) {
       return (
         <div key={entry.id} className="mb-2">
           <p>{entry.recipes.name}</p>
-          <p className="text-sm">{entry.calories} kcal</p>
+          <p className="text-sm">
+            {totalCalories} kcal
+            {entry.serving_size !== 1 && ` (${entry.serving_size} servings)`}
+          </p>
         </div>
       );
     } else {
       return (
         <div key={entry.id} className="mb-2">
           <p>Unknown food entry</p>
-          <p className="text-sm">{entry.calories} kcal</p>
+          <p className="text-sm">
+            {totalCalories} kcal
+            {entry.serving_size !== 1 && ` (${entry.serving_size} servings)`}
+          </p>
         </div>
       );
     }
   };
+
+
+  const calculateCaloriePercentage = (consumed, target) => {
+    const percentage = (consumed / target) * 100;
+    return Math.min(percentage, 100); // Cap at 100%
+  };
+
+  const getCalorieBarColor = (percentage) => {
+    if (percentage <= 50) return 'bg-green-500';
+    if (percentage <= 75) return 'bg-yellow-500';
+    if (percentage <= 100) return 'bg-orange-500';
+    return 'bg-red-500';
+  };
+
 
   const fetchUserData = async () => {
     try {
@@ -242,10 +266,11 @@ const Dashboard = () => {
 
   const calculateTotalNutrition = (foodLog) => {
     return foodLog.reduce((total, entry) => {
-      total.calories += entry.calories;
-      total.protein += entry.protein;
-      total.fat += entry.fat;
-      total.carbs += entry.carbohydrates;
+      const servingMultiplier = entry.serving_size || 1;
+      total.calories += entry.calories * servingMultiplier;
+      total.protein += entry.protein * servingMultiplier;
+      total.fat += entry.fat * servingMultiplier;
+      total.carbs += entry.carbohydrates * servingMultiplier;
       return total;
     }, { calories: 0, protein: 0, fat: 0, carbs: 0 });
   };
@@ -287,6 +312,9 @@ const Dashboard = () => {
 
   const totalNutrition = calculateTotalNutrition(foodLog);
   const remainingCalories = userData.target_calories - totalNutrition.calories;
+  const caloriePercentage = calculateCaloriePercentage(totalNutrition.calories, userData.target_calories);
+  const calorieBarColor = getCalorieBarColor(caloriePercentage);
+  const isExceedingCalories = totalNutrition.calories > userData.target_calories;
 
   return (
     <div className="font-sans bg-[#F5E9D4] text-[#3C4E2A] min-h-screen flex flex-col p-4">
@@ -315,16 +343,30 @@ const Dashboard = () => {
       <div className="bg-[#3C4E2A] text-[#F5E9D4] p-4 rounded-lg mb-4">
         <div className="flex justify-between items-center">
           <span>Calories</span>
-          <span className="font-bold">{remainingCalories} kcal</span>
+          <span className="font-bold">
+            {isExceedingCalories ? (
+              <span className="text-red-500">+{Math.abs(remainingCalories)}</span>
+            ) : (
+              remainingCalories
+            )} kcal
+          </span>
         </div>
-        <p className="text-right text-sm">Remaining</p>
-        <div className="w-full bg-[#F5E9D4] h-2 rounded-full mt-2">
+        <p className="text-right text-sm">
+          {isExceedingCalories ? 'Exceeded' : 'Remaining'}
+        </p>
+        <div className="w-full bg-[#F5E9D4] h-2 rounded-full mt-2 overflow-hidden">
           <div 
-            className="bg-[#4CAF50] h-2 rounded-full" 
-            style={{width: `${(totalNutrition.calories / userData.target_calories) * 100}%`}}
+            className={`${calorieBarColor} h-2 rounded-full transition-all duration-300`} 
+            style={{width: `${caloriePercentage}%`}}
           ></div>
         </div>
+        {isExceedingCalories && (
+          <p className="text-red-500 text-sm mt-1">
+            You have exceeded your daily calorie goal by {Math.abs(remainingCalories)} kcal
+          </p>
+        )}
       </div>
+
 
       {/* Macros */}
       <div className="bg-[#F5E9D4] border border-[#3C4E2A] p-4 rounded-lg mb-4">
@@ -378,6 +420,7 @@ const Dashboard = () => {
         </div>
       )}
 
+
       {/* Meal Sections */}
       {['breakfast', 'lunch', 'dinner', 'snacks'].map((meal) => (
         <div key={meal} className="bg-[#F5E9D4] border border-[#3C4E2A] rounded-lg p-4 mb-4">
@@ -391,6 +434,7 @@ const Dashboard = () => {
           </button>
         </div>
       ))}
+      
       
       {/* Weight Section */}
       <WeightUpdate currentWeight={currentWeight} updateWeight={updateWeight} />

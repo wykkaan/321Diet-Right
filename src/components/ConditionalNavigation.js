@@ -1,16 +1,22 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useEffect, useState } from 'react'
 import { useAuth } from './AuthProvider'
 import BottomTabNavigation from './BottomTabNavigation'
+import { usePathname } from 'next/navigation'
 
 export default function ConditionalNavigation() {
   const { user, loading } = useAuth()
+  const [showNavigation, setShowNavigation] = useState(false)
+  const pathname = usePathname()
 
-  const navigation = useMemo(() => {
-    if (loading) return null
-    return user ? <BottomTabNavigation /> : null
-  }, [user, loading])
+  useEffect(() => {
+    if (!loading) {
+      setShowNavigation(!!user && !['/', '/login', '/signup'].includes(pathname))
+    }
+  }, [user, loading, pathname])
 
-  return navigation
+  if (loading || !showNavigation) return null
+
+  return <BottomTabNavigation />
 }
